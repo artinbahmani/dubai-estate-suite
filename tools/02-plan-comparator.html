@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Plan Comparator — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
+</style>
+<script src="../assets/shared.js"></script>
+<script src="02-plan-comparator.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">payment plan comparator</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Payment Plan Comparator</h1>
+  <p class="subtitle">Three projects side by side — ranked on real cost of money, not the sticker price or the milestone table.</p>
+
+  <div class="grid grid-3">
+    <section class="card">
+      <h2>Project 1</h2>
+      <div class="field"><label>Project name</label><input id="p1Name" type="text" value="Project A"></div>
+      <div class="field"><label>Price (AED)</label><input id="p1Price" type="number" value="2000000" min="0" step="50000"></div>
+      <div class="field"><label>Plan template</label>
+        <select id="p1Plan">
+          <option value="60/40" selected>60/40</option>
+          <option value="70/30">70/30</option>
+          <option value="80/20">80/20</option>
+          <option value="50/50">50/50</option>
+          <option value="ph">Post-handover 50/20/30 (24 mo)</option>
+        </select>
+      </div>
+      <div class="field"><label>Construction (months)</label><input id="p1Constr" type="number" value="36" min="1" step="1"></div>
+      <div class="field"><label>Appreciation to handover (%)</label><input id="p1Appr" type="number" value="15" step="1"></div>
+    </section>
+
+    <section class="card">
+      <h2>Project 2</h2>
+      <div class="field"><label>Project name</label><input id="p2Name" type="text" value="Project B"></div>
+      <div class="field"><label>Price (AED)</label><input id="p2Price" type="number" value="2100000" min="0" step="50000"></div>
+      <div class="field"><label>Plan template</label>
+        <select id="p2Plan">
+          <option value="60/40">60/40</option>
+          <option value="70/30">70/30</option>
+          <option value="80/20" selected>80/20</option>
+          <option value="50/50">50/50</option>
+          <option value="ph">Post-handover 50/20/30 (24 mo)</option>
+        </select>
+      </div>
+      <div class="field"><label>Construction (months)</label><input id="p2Constr" type="number" value="36" min="1" step="1"></div>
+      <div class="field"><label>Appreciation to handover (%)</label><input id="p2Appr" type="number" value="15" step="1"></div>
+    </section>
+
+    <section class="card">
+      <h2>Project 3</h2>
+      <div class="field"><label>Project name</label><input id="p3Name" type="text" value="Project C"></div>
+      <div class="field"><label>Price (AED)</label><input id="p3Price" type="number" value="2250000" min="0" step="50000"></div>
+      <div class="field"><label>Plan template</label>
+        <select id="p3Plan">
+          <option value="60/40">60/40</option>
+          <option value="70/30">70/30</option>
+          <option value="80/20">80/20</option>
+          <option value="50/50">50/50</option>
+          <option value="ph" selected>Post-handover 50/20/30 (24 mo)</option>
+        </select>
+      </div>
+      <div class="field"><label>Construction (months)</label><input id="p3Constr" type="number" value="36" min="1" step="1"></div>
+      <div class="field"><label>Appreciation to handover (%)</label><input id="p3Appr" type="number" value="15" step="1"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Shared assumption</h2>
+    <div class="field"><label>Annual discount rate (%) — your client's cost of money</label><input id="discRate" type="number" value="8" step="0.5"></div>
+    <div id="verdictNpv" class="verdict ok"></div>
+    <div id="verdictIrr" class="verdict warn"></div>
+  </section>
+
+  <section class="card">
+    <h2>Comparison</h2>
+    <table>
+      <thead id="cmpHead"></thead>
+      <tbody id="cmpBody"></tbody>
+    </table>
+    <p class="note">NPV discounts every payment back to today at the discount rate — later money costs less. IRR assumes the unit is sold at handover for the appreciated price, minus any balance still unpaid. Nominal total ignores timing entirely; portals show only that.</p>
+  </section>
+
+  <section class="card">
+    <h2>Real cost today (NPV of payments)</h2>
+    <canvas id="npvChart" class="chart"></canvas>
+  </section>
+</main>
+<footer class="footer">Dubai Estate Suite · payment plan comparator · illustrative only — confirm plans with the developer</footer>
+</body>
+</html>

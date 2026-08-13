@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Off-Plan Flip Analyzer — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="07-flip-analyzer.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">07 · Off-Plan Flip Analyzer</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Off-Plan Flip Analyzer</h1>
+  <p class="subtitle">Bought at launch and selling before handover — see what you actually walk away with, on the cash you have deployed so far.</p>
+
+  <div class="grid grid-2">
+    <section class="card">
+      <h2>Deal inputs</h2>
+      <div class="field">
+        <label for="inPrice">Launch price (AED)</label>
+        <input type="number" id="inPrice" value="1500000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="inPctPaid">% of price paid to developer so far</label>
+        <input type="number" id="inPctPaid" value="40" min="0" max="100" step="1">
+      </div>
+      <div class="field">
+        <label for="inMonths">Months held</label>
+        <input type="number" id="inMonths" value="18" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="inResale">Expected resale price (AED)</label>
+        <input type="number" id="inResale" value="1800000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="inNoc">Developer NOC / assignment fee (AED)</label>
+        <input type="number" id="inNoc" value="1000" min="0" step="100">
+      </div>
+      <div class="field">
+        <label>Resale agency fee — 2% of resale price</label>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--text);font-size:13px;margin-bottom:0;">
+          <input type="checkbox" id="inVat" checked style="width:auto;"> Add 5% VAT on the agency fee
+        </label>
+      </div>
+      <div class="field">
+        <label for="inBalance">Remaining balance handling</label>
+        <select id="inBalance">
+          <option value="takeover" selected>Buyer takes over the payment plan</option>
+          <option value="settle">Settle remaining from proceeds</option>
+        </select>
+      </div>
+      <p class="note">Most developers require a minimum % paid (often 30–40%) before allowing assignment/resale, and the SPA may restrict pre-handover resale — always check first.</p>
+    </section>
+
+    <section class="card">
+      <h2>Results</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Cash invested so far</div><div class="v" id="oCash">—</div></div>
+        <div class="stat"><div class="k">Outstanding to developer</div><div class="v" id="oOutstanding">—</div></div>
+        <div class="stat"><div class="k">Selling costs</div><div class="v" id="oCosts">—</div></div>
+        <div class="stat"><div class="k">Net cash out at closing</div><div class="v" id="oNetCash">—</div></div>
+        <div class="stat"><div class="k">Profit</div><div class="v" id="oProfit">—</div></div>
+        <div class="stat"><div class="k">ROI on cash invested</div><div class="v" id="oRoi">—</div></div>
+        <div class="stat"><div class="k">Annualized ROI</div><div class="v" id="oAnnRoi">—</div></div>
+      </div>
+      <div class="verdict warn" id="oVerdict">—</div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Closing breakdown</h2>
+    <table>
+      <tbody id="oBreakdown"></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Sensitivity — profit vs resale price</h2>
+    <canvas class="chart" id="sensChart"></canvas>
+    <p class="note">Resale price varied from −10% to +20% around the entered value. Selling costs recalculated at each point.</p>
+  </section>
+</main>
+<footer class="footer">Dubai Estate Suite · indicative figures — confirm assignment rules with the developer before quoting a client</footer>
+</body>
+</html>

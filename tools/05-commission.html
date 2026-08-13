@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission Calculator — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="05-commission.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">commission calculator</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Commission Calculator</h1>
+  <p class="subtitle">Off-plan, resale and rental commission with 5% VAT and agent/brokerage splits.</p>
+
+  <div class="card">
+    <button id="tab-offplan" class="btn" type="button">Off-plan</button>
+    <button id="tab-resale" class="btn ghost" type="button">Resale</button>
+    <button id="tab-rental" class="btn ghost" type="button">Rental</button>
+  </div>
+
+  <div class="grid grid-2">
+    <div>
+      <div class="card" id="panel-offplan">
+        <h2>Off-plan deal</h2>
+        <div class="field">
+          <label for="op-price">Unit price (AED)</label>
+          <input type="number" id="op-price" value="1500000" min="0" step="50000">
+        </div>
+        <div class="field">
+          <label for="op-comm">Developer commission <span class="range-val" id="op-comm-val">5.0%</span></label>
+          <input type="range" id="op-comm" min="3" max="7" step="0.1" value="5">
+        </div>
+        <div class="field">
+          <label for="op-rebate">Rebate to buyer (% of price)</label>
+          <input type="number" id="op-rebate" value="0" min="0" max="3" step="0.1">
+        </div>
+        <div class="field">
+          <label for="op-deals">Deals per quarter</label>
+          <input type="number" id="op-deals" value="2" min="0" step="1">
+        </div>
+        <p class="note">Buyer pays 0% — the developer pays the brokerage 3–7% of the unit price. Off-plan is typically 2–3x more profitable per deal than resale.</p>
+      </div>
+
+      <div class="card" id="panel-resale" hidden>
+        <h2>Resale deal</h2>
+        <div class="field">
+          <label for="rs-price">Sale price (AED)</label>
+          <input type="number" id="rs-price" value="1200000" min="0" step="50000">
+        </div>
+        <div class="field">
+          <label for="rs-fee">Agency fee (%)</label>
+          <input type="number" id="rs-fee" value="2" min="0" step="0.1">
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="rs-dual" style="width:auto; margin-right:8px;">Dual agency — act for both sides</label>
+        </div>
+        <p class="note" id="rs-dual-note" hidden>Dual agency is legal in Dubai: the brokerage collects 2% from the buyer and 2% from the seller, so the fee is doubled.</p>
+        <p class="note">2% of the sale price is customary on the secondary market, paid by the buyer (tenant pays on rentals).</p>
+      </div>
+
+      <div class="card" id="panel-rental" hidden>
+        <h2>Rental deal</h2>
+        <div class="field">
+          <label for="rn-rent">Annual rent (AED)</label>
+          <input type="number" id="rn-rent" value="90000" min="0" step="5000">
+        </div>
+        <p class="note">Commission is 5% of the annual rent, subject to an AED 5,000 minimum, paid by the tenant.</p>
+      </div>
+
+      <div class="card">
+        <h2>Split &amp; VAT</h2>
+        <div class="field">
+          <label for="split">Agent share of commission <span class="range-val" id="split-val">60%</span></label>
+          <input type="range" id="split" min="50" max="80" step="1" value="60">
+        </div>
+        <p class="note">VAT of 5% is charged on top of the commission and remitted to the FTA — it is not split between agent and brokerage. Splits of 50/50 to 80/20 are typical; higher producers negotiate up.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Per-deal breakdown</h2>
+        <div class="stats">
+          <div class="stat"><div class="k">Gross commission</div><div class="v" id="s-gross">—</div></div>
+          <div class="stat"><div class="k">VAT (5%)</div><div class="v" id="s-vat">—</div></div>
+          <div class="stat"><div class="k">Net commission (incl. VAT)</div><div class="v" id="s-net">—</div></div>
+          <div class="stat"><div class="k">Agent take-home</div><div class="v pos" id="s-agent">—</div></div>
+          <div class="stat"><div class="k">Brokerage keeps</div><div class="v" id="s-broker">—</div></div>
+          <div class="stat"><div class="k">Agent income / quarter</div><div class="v" id="s-quarter">—</div></div>
+          <div class="stat"><div class="k">Agent income / year</div><div class="v" id="s-year">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Agent vs brokerage</h2>
+        <canvas class="chart" id="chart-split"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Income projection</h2>
+        <canvas class="chart" id="chart-proj"></canvas>
+        <p class="note" id="proj-note"></p>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · indicative figures only · confirm commission terms in your brokerage agreement</footer>
+</body>
+</html>

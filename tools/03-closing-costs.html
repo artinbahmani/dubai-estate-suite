@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Closing Cost Calculator — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">closing cost calculator</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Closing Cost Calculator</h1>
+  <p class="subtitle">Full buyer-side cost breakdown for a secondary purchase — DLD, trustee, agency, mortgage and transfer-day fees.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Inputs</h2>
+      <div class="field">
+        <label for="price">Purchase price (AED)</label>
+        <input type="number" id="price" value="1500000" min="0" step="50000">
+      </div>
+      <div class="field">
+        <label for="financing">Financing</label>
+        <select id="financing">
+          <option value="cash">Cash purchase</option>
+          <option value="mortgage" selected>Mortgage</option>
+        </select>
+      </div>
+      <div class="field" id="ltvField">
+        <label for="ltv">Loan-to-value (%) <span class="range-val" id="ltvVal">80%</span></label>
+        <input type="range" id="ltv" min="10" max="90" step="5" value="80">
+      </div>
+      <div class="field">
+        <label for="agencyPct">Agency fee (%) <span class="range-val" id="agencyVal">2%</span></label>
+        <input type="range" id="agencyPct" min="0" max="5" step="0.25" value="2">
+      </div>
+      <div class="field">
+        <label for="nocFee">NOC fee (AED)</label>
+        <input type="number" id="nocFee" value="1000" min="0" step="100">
+        <div class="note">Developer NOC fees typically range AED 500 to AED 5,000.</div>
+      </div>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="bankArr" checked style="width:auto; margin-right:6px;">
+          Bank arrangement fee (1% of loan)
+        </label>
+      </div>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="convey" checked style="width:auto; margin-right:6px;">
+          Conveyancing (AED 6,000)
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Summary</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Total fees</div><div class="v" id="sFees">—</div></div>
+        <div class="stat"><div class="k">Fees as % of price</div><div class="v" id="sPct">—</div></div>
+        <div class="stat"><div class="k">Cash needed at transfer</div><div class="v" id="sCash">—</div></div>
+        <div class="stat" id="loanStat"><div class="k">Loan amount</div><div class="v" id="sLoan">—</div></div>
+      </div>
+      <div class="note">Typical all-in buyer closing cost in Dubai runs ~7-8% of the purchase price. The DLD fee of 4% is customarily paid by the buyer.</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Cost breakdown</h2>
+      <table>
+        <thead>
+          <tr><th>Item</th><th class="num">Amount</th></tr>
+        </thead>
+        <tbody id="costRows"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Cost mix</h2>
+      <canvas id="donut" class="chart"></canvas>
+    </div>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · indicative fee schedule for demonstration · verify current DLD and trustee tariffs before client use</footer>
+<script src="../assets/shared.js"></script>
+<script src="03-closing-costs.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Plan Calculator — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="01-payment-plan.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">off-plan payment plan calculator</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Payment Plan Calculator</h1>
+  <p class="subtitle">Model any off-plan payment structure — milestone schedule, cumulative cash, NPV and IRR.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Plan structure</h2>
+      <div class="field">
+        <label for="price">Unit price (AED)</label>
+        <input type="number" id="price" value="1500000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="bookingPct">Booking (%)</label>
+        <input type="number" id="bookingPct" value="10" min="0" max="100" step="1">
+      </div>
+      <div class="field">
+        <label for="constrMonths">Construction period (months)</label>
+        <input type="number" id="constrMonths" value="36" min="3" max="120" step="3">
+      </div>
+      <div class="field">
+        <label for="planTemplate">Plan template (construction / handover)</label>
+        <select id="planTemplate">
+          <option value="60">60 / 40</option>
+          <option value="70">70 / 30</option>
+          <option value="80">80 / 20</option>
+          <option value="50">50 / 50</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="field" id="customRow" hidden>
+        <label for="customShare">Construction share — <span class="range-val" id="customShareVal">60%</span></label>
+        <input type="range" id="customShare" min="10" max="90" step="5" value="60">
+      </div>
+      <div class="field">
+        <label for="phToggle">
+          <input type="checkbox" id="phToggle" style="width:auto; margin-right:6px;"> Post-handover plan
+        </label>
+      </div>
+      <div class="field" id="phMonthsRow" hidden>
+        <label for="phMonths">Post-handover period (months)</label>
+        <input type="number" id="phMonths" value="24" min="1" max="120" step="1">
+      </div>
+      <p class="note" id="clampNote" hidden>Booking exceeds the construction share — construction milestones set to zero.</p>
+    </div>
+
+    <div class="card">
+      <h2>Investment view</h2>
+      <div class="field">
+        <label for="handoverValue">Expected value at handover (AED)</label>
+        <input type="number" id="handoverValue" value="1500000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="discRate">Annual discount rate (%)</label>
+        <input type="number" id="discRate" value="8" min="0" max="30" step="0.5">
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">NPV of payment stream</div><div class="v" id="statNpv">—</div></div>
+        <div class="stat"><div class="k">IRR if sold at handover</div><div class="v" id="statIrr">—</div></div>
+      </div>
+      <div class="verdict" id="verdict">—</div>
+      <p class="note">Standard Emaar/Sobha plans are 60/40; post-handover plans (Damac/Binghatti style) typically carry a 10–20% price premium; cash discounts of 3–7% are common.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Summary</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Total paid</div><div class="v" id="statTotal">—</div></div>
+      <div class="stat"><div class="k">Paid by handover</div><div class="v" id="statByHandover">—</div></div>
+      <div class="stat"><div class="k">Months to full payment</div><div class="v" id="statMonths">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cumulative cash</h2>
+    <canvas class="chart" id="chart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Milestone schedule</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Milestone</th>
+          <th class="num">%</th>
+          <th class="num">Amount</th>
+          <th class="num">Cumulative</th>
+        </tr>
+      </thead>
+      <tbody id="planBody"></tbody>
+    </table>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · payment plan calculator · indicative only — confirm milestone dates with the developer's SPA</footer>
+</body>
+</html>

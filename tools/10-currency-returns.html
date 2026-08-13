@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currency-Adjusted Returns — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="../data/fx.js"></script>
+<script src="10-currency-returns.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">tool 10 · currency-adjusted returns</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Currency-Adjusted Returns</h1>
+  <p class="subtitle">What a Dubai property actually returned in your client's home currency — the AED gain and the FX effect are rarely the same thing.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Inputs</h2>
+      <div class="field">
+        <label for="cur">Buyer currency</label>
+        <select id="cur">
+          <option value="EUR">EUR — Euro</option>
+          <option value="GBP">GBP — British pound</option>
+          <option value="INR">INR — Indian rupee</option>
+          <option value="RUB">RUB — Russian ruble</option>
+          <option value="CNY">CNY — Chinese yuan</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="pYear">Purchase year</label>
+        <select id="pYear"></select>
+      </div>
+      <div class="field">
+        <label for="price">Purchase price (AED)</label>
+        <input type="number" id="price" value="1500000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="curVal">Current value (AED)</label>
+        <input type="number" id="curVal" value="2100000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="rent">Total rent collected (AED)</label>
+        <input type="number" id="rent" value="0" min="0" step="5000">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Results</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="k">Total return, AED</div>
+          <div class="v" id="sAed">—</div>
+        </div>
+        <div class="stat">
+          <div class="k" id="kHome">Total return, home</div>
+          <div class="v" id="sHome">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">FX effect</div>
+          <div class="v" id="sFx">—</div>
+        </div>
+        <div class="stat">
+          <div class="k" id="kAnn">Annualized, home</div>
+          <div class="v" id="sAnn">—</div>
+        </div>
+      </div>
+      <div class="verdict warn" id="verdict"></div>
+      <p class="note" id="homeDetail"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Position value in home currency</h2>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">AED value interpolated straight-line between purchase price and current value, converted at each year's average rate. Rent is included in the return figures above, not in this chart.</p>
+  </div>
+
+  <div class="card">
+    <h2>Year by year</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th class="num">AED value</th>
+          <th class="num" id="thRate">FX rate (per USD)</th>
+          <th class="num" id="thHome">Home value</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="note">AED is pegged to the US dollar at 3.6725. FX series are yearly averages (sample data).</p>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>
+</body>
+</html>

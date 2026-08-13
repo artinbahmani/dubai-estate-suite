@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Pulse — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="../data/transactions.js"></script>
+<script src="08-market-pulse.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">market pulse</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Market Pulse</h1>
+  <p class="subtitle">Transaction volume, price per sqft trends and off-plan vs ready share across 12 Dubai communities.</p>
+
+  <div class="card">
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="f-community">Community</label>
+        <select id="f-community">
+          <option value="all">All communities</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-type">Property type</label>
+        <select id="f-type">
+          <option value="all">All types</option>
+          <option value="apartment">Apartments</option>
+          <option value="villa">Villas</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Transactions</div><div class="v" id="s-count">—</div></div>
+      <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="s-ppsf">—</div></div>
+      <div class="stat"><div class="k">Off-plan share</div><div class="v" id="s-offplan">—</div></div>
+      <div class="stat"><div class="k">Average ticket</div><div class="v" id="s-ticket">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Monthly transaction count</h2>
+    <canvas id="c-volume" class="chart"></canvas>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Median AED / sqft by month</h2>
+      <canvas id="c-ppsf" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Off-plan share by month</h2>
+      <canvas id="c-offplan" class="chart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Top 5 communities by volume</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Community</th>
+          <th class="num">Transactions</th>
+          <th class="num">Median AED / sqft</th>
+          <th class="num">Off-plan share</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-top"></tbody>
+    </table>
+    <p class="note">Ranked across all communities; follows the property type filter only.</p>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · sample dataset — wire to DLD open data exports for live numbers</footer>
+</body>
+</html>

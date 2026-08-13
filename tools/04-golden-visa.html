@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Visa Checker — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  /* tool-specific: property rows, progress bar, badge variants */
+  .prow {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .prow .remove {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .prow .remove:hover { color: var(--red); border-color: var(--red); }
+  .pbar {
+    height: 12px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 12px 0 6px;
+  }
+  .pbar-fill { height: 100%; background: var(--gold); width: 0; transition: width 0.2s; }
+  .pbar-label { font-size: 12px; color: var(--muted); }
+  .badge.warn { border-color: rgba(248,81,73,0.5); color: var(--red); }
+  .badge.ok { border-color: rgba(63,185,80,0.5); color: var(--green); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">04 · Golden Visa Checker</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Golden Visa Eligibility Checker</h1>
+  <p class="subtitle">Property route to the 10-year Golden Visa: AED 2,000,000 in purchase price across one or more properties.</p>
+
+  <div class="card">
+    <h2>Properties</h2>
+    <div id="rows"></div>
+    <button class="btn ghost" id="addProperty">Add property</button>
+  </div>
+
+  <div class="card">
+    <h2>Eligibility</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Counted value</div><div class="v" id="statCounted">—</div></div>
+      <div class="stat"><div class="k">Threshold</div><div class="v" id="statThreshold">—</div></div>
+      <div class="stat"><div class="k" id="statGapLabel">Shortfall</div><div class="v" id="statGap">—</div></div>
+    </div>
+    <div class="pbar"><div class="pbar-fill" id="barFill"></div></div>
+    <div class="pbar-label" id="barLabel"></div>
+    <div class="verdict bad" id="verdict"></div>
+
+    <h2 style="margin-top:24px">Per-property breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th class="num">Purchase price</th>
+          <th class="num">Amount paid</th>
+          <th class="num">Counted value</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+
+    <p class="note">Rules per DLD/GDRFA: the AED 2,000,000 threshold is on purchase price per title deed (ready) or Oqood (off-plan); multiple properties may combine. Mortgaged properties have been eligible since January 2024 — the old AED 1M minimum cash-paid rule was removed — but a bank NOC showing the amount already paid is required. Off-plan properties count at full price only when at least 50% of the price is paid and construction is at least 50% complete. Verify current requirements with GDRFA before filing.</p>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · verify figures against DLD before client use</footer>
+<script src="../assets/shared.js"></script>
+<script src="04-golden-visa.js" defer></script>
+</body>
+</html>

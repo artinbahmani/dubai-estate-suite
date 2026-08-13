@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instant CMA — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="../data/transactions.js"></script>
+<script src="09-instant-cma.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">Instant CMA</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Instant CMA</h1>
+  <p class="subtitle">Comparative market analysis from transaction records — comps, median pricing and scatter view.</p>
+
+  <div class="card">
+    <h2>Subject property</h2>
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="community">Community</label>
+        <select id="community"></select>
+      </div>
+      <div class="field">
+        <label for="ptype">Property type</label>
+        <select id="ptype">
+          <option value="apartment">Apartment</option>
+          <option value="villa">Villa</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="beds">Bedrooms</label>
+        <select id="beds">
+          <option value="0">Studio</option>
+          <option value="1" selected>1 bedroom</option>
+          <option value="2">2 bedrooms</option>
+          <option value="3">3 bedrooms</option>
+          <option value="4">4 bedrooms</option>
+          <option value="5">5 bedrooms</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sqft">Property size (sqft)</label>
+        <input id="sqft" type="number" min="100" step="10" value="1000">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Valuation</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Comps found</div><div class="v" id="sComps">—</div></div>
+      <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="sMedian">—</div></div>
+      <div class="stat"><div class="k">Estimated value</div><div class="v" id="sValue">—</div></div>
+      <div class="stat"><div class="k">Value range (25th–75th)</div><div class="v" id="sRange">—</div></div>
+    </div>
+    <div class="note" id="fallbackNote"></div>
+    <div class="verdict ok" id="confidence"></div>
+  </div>
+
+  <div class="card">
+    <h2>Comps — size vs price</h2>
+    <canvas class="chart" id="scatter"></canvas>
+    <div class="note">Gold dots are comparable transactions. The red dot is the subject property at the estimated value.</div>
+  </div>
+
+  <div class="card">
+    <h2>Most recent comps</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type / Beds</th>
+          <th class="num">Sqft</th>
+          <th class="num">Price</th>
+          <th class="num">AED / sqft</th>
+        </tr>
+      </thead>
+      <tbody id="compsBody"></tbody>
+    </table>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>
+</body>
+</html>
