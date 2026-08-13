@@ -9,6 +9,9 @@ const THRESHOLD = 2000000;
 const MIN_PAID_PCT = 50;
 const MIN_BUILD_PCT = 50;
 
+const STORAGE_KEY = 'des-golden-visa';          // property list
+const CHECKLIST_KEY = 'des-golden-visa-checklist'; // checkbox states
+
 const STATUS = {
   owned:     'Ready — owned outright',
   mortgaged: 'Ready — mortgaged',
@@ -74,8 +77,17 @@ function buildRow() {
   return { id, els };
 }
 
-function addRow() {
-  rows.push(buildRow());
+function addRow(saved) {
+  const r = buildRow();
+  if (saved) {
+    r.els.name.value = saved.name || '';
+    r.els.status.value = saved.status in STATUS ? saved.status : 'owned';
+    r.els.price.value = saved.price ?? 0;
+    r.els.paid.value = saved.paid ?? 0;
+    r.els.build.value = saved.build ?? 50;
+    r.els.buildField.style.display = r.els.status.value === 'offplan' ? '' : 'none';
+  }
+  rows.push(r);
   render();
 }
 
@@ -85,6 +97,29 @@ function removeRow(id) {
   rows[i].els.wrap.remove();
   rows.splice(i, 1);
   render();
+}
+
+// ---- persistence ----
+
+function saveState() {
+  try {
+    const properties = rows.map(r => ({
+      name: r.els.name.value,
+      status: r.els.status.value,
+      price: r.els.price.value,
+      paid: r.els.paid.value,
+      build: r.els.build.value,
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+  } catch (e) { /* file:// or private mode can block storage; persistence just degrades */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const properties = raw ? JSON.parse(raw) : null;
+    return Array.isArray(properties) ? properties : null;
+  } catch (e) { return null; }
 }
 
 // ---- eligibility logic ----
@@ -169,7 +204,72 @@ function render() {
     tr.firstElementChild.textContent = name; // textContent, not HTML — user input
     body.appendChild(tr);
   }
+
+  renderGap(total, gap);
+  saveState();
 }
 
-document.getElementById('addProperty').addEventListener('click', addRow);
-addRow(); // start with one row; addRow() runs the initial render
+// ---- gap planner ----
+
+function renderGap(total, gap) {
+  const card = document.getElementById('gapCard');
+  if (gap <= 0) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const extra = numVal('extraBudget');
+  const stillNeeded = Math.max(0, gap - extra);
+  const v = document.getElementById('gapVerdict');
+  if (stillNeeded === 0) {
+    v.className = 'verdict ok';
+    v.textContent = 'Adding ' + fmtAED(extra) + ' closes the gap — you would reach ' +
+      fmtCompact(total + extra) + ' of counted value, above the AED 2,000,000 threshold.';
+  } else if (extra > 0) {
+    v.className = 'verdict warn';
+    v.textContent = 'Adding ' + fmtAED(extra) + ' is not enough — ' + fmtAED(stillNeeded) +
+      ' of extra counted value still needed on top of it.';
+  } else {
+    v.className = 'verdict warn';
+    v.textContent = fmtAED(gap) + ' of additional counted property value is needed to reach the threshold.';
+  }
+}
+
+// ---- checklist (localStorage-backed) ----
+
+const checklistBoxes = document.querySelectorAll('#checklist input[type="checkbox"]');
+try {
+  const saved = JSON.parse(localStorage.getItem(CHECKLIST_KEY) || '[]');
+  checklistBoxes.forEach((cb, i) => {
+    cb.checked = !!saved[i];
+    if (cb.checked) cb.closest('li').classList.add('done');
+  });
+} catch (e) { /* ignore corrupt state */ }
+checklistBoxes.forEach(cb => cb.addEventListener('change', () => {
+  cb.closest('li').classList.toggle('done', cb.checked);
+  try {
+    localStorage.setItem(CHECKLIST_KEY, JSON.stringify([...checklistBoxes].map(b => b.checked)));
+  } catch (e) { /* storage unavailable */ }
+}));
+
+// ---- wiring & init ----
+
+document.getElementById('extraBudget').addEventListener('input', render);
+document.getElementById('addProperty').addEventListener('click', () => addRow());
+document.getElementById('resetAll').addEventListener('click', () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(CHECKLIST_KEY);
+  } catch (e) { /* ignore */ }
+  for (const r of rows) r.els.wrap.remove();
+  rows.length = 0;
+  nextId = 1;
+  document.getElementById('extraBudget').value = 0;
+  checklistBoxes.forEach(cb => { cb.checked = false; cb.closest('li').classList.remove('done'); });
+  addRow();
+});
+
+const restored = loadState();
+if (restored && restored.length) {
+  restored.forEach(p => addRow(p)); // each addRow re-renders; final render reflects all rows
+} else {
+  addRow(); // start with one row; addRow() runs the initial render
+}

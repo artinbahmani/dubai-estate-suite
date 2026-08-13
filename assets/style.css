@@ -103,6 +103,31 @@ input[type="range"] { padding: 0; }
   border: 1px solid var(--gold-dim);
 }
 .btn.ghost:hover { background: var(--card2); }
+.btn.small { padding: 6px 14px; font-size: 12px; }
+
+.chart-tip {
+  position: fixed;
+  background: var(--card2);
+  border: 1px solid var(--gold-dim);
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+  display: none;
+  z-index: 99;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  .topbar, .footer, .btn, .no-print { display: none !important; }
+  .card, .stat { background: #fff; border-color: #ccc; }
+  .stat .v { color: #8a6d1c; }
+  h1, h2, td, th { color: #111; }
+  .container { padding: 0; }
+}
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 4px; }
 .stat {

@@ -45,7 +45,7 @@
         <input type="number" id="curVal" value="2100000" min="0" step="10000">
       </div>
       <div class="field">
-        <label for="rent">Total rent collected (AED)</label>
+        <label for="rent">Rent collected per year (AED)</label>
         <input type="number" id="rent" value="0" min="0" step="5000">
       </div>
     </div>
@@ -72,6 +72,20 @@
       </div>
       <div class="verdict warn" id="verdict"></div>
       <p class="note" id="homeDetail"></p>
+      <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>All currencies</h2>
+      <canvas class="chart" id="chartAll"></canvas>
+      <p class="note">Total return on the same AED inputs, measured in each home currency. The AED reference bar is what a dirham-based investor earns.</p>
+    </div>
+    <div class="card">
+      <h2 id="fxTitle">FX rate</h2>
+      <canvas class="chart" id="chartFx"></canvas>
+      <p class="note">Yearly average rate, units of currency per 1 USD. A rising line means the currency weakened against the USD-pegged dirham.</p>
     </div>
   </div>
 
@@ -90,11 +104,15 @@
           <th class="num">AED value</th>
           <th class="num" id="thRate">FX rate (per USD)</th>
           <th class="num" id="thHome">Home value</th>
+          <th class="num" id="thRent">Rent (home)</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
+      <tfoot>
+        <tr id="rentTotalRow"></tr>
+      </tfoot>
     </table>
-    <p class="note">AED is pegged to the US dollar at 3.6725. FX series are yearly averages (sample data).</p>
+    <p class="note">AED is pegged to the US dollar at 3.6725. FX series are yearly averages (sample data). Rent in the table is converted at each year's rate; the return figures value all rent at the exit-year rate.</p>
   </div>
 </main>
 <footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>

@@ -25,6 +25,25 @@ function matchesType(r, type) {
   return type === 'all' || r.type === type;
 }
 
+function matchesBeds(r, beds) {
+  if (beds === 'all') return true;
+  if (beds === 'studio') return r.beds === 0;
+  if (beds === '3+') return r.beds >= 3;
+  return r.beds === +beds;
+}
+
+// current filter state -> filtered records (all filters) and baseOnly (no community filter)
+function currentFiltered() {
+  const comm = strVal('f-community');
+  const type = strVal('f-type');
+  const beds = strVal('f-beds');
+  return {
+    comm,
+    filtered: records.filter(r => (comm === 'all' || r.community === comm) && matchesType(r, type) && matchesBeds(r, beds)),
+    baseOnly: records.filter(r => matchesType(r, type) && matchesBeds(r, beds))
+  };
+}
+
 // group a record list into a Map of month -> records, keeping every month present
 function groupByMonth(list) {
   const m = new Map(months.map(k => [k, []]));
@@ -58,11 +77,7 @@ function medianSeries(grouped) {
 }
 
 function render() {
-  const comm = strVal('f-community');
-  const type = strVal('f-type');
-
-  const filtered = records.filter(r => (comm === 'all' || r.community === comm) && matchesType(r, type));
-  const typeOnly = records.filter(r => matchesType(r, type));
+  const { comm, filtered, baseOnly } = currentFiltered();
 
   // ---- stat cards ----
   const offplanCount = filtered.filter(r => r.offplan).length;
@@ -84,7 +99,7 @@ function render() {
 
   // ---- (b) median ppsf: selected community vs all Dubai ----
   const sel = medianSeries(grouped);
-  const all = medianSeries(groupByMonth(typeOnly));
+  const all = medianSeries(groupByMonth(baseOnly));
   const ppsfCanvas = document.getElementById('c-ppsf');
   if (!sel.pts.length) {
     clearCanvas(ppsfCanvas, 'No data for this selection');
@@ -122,9 +137,51 @@ function render() {
     });
   }
 
-  // ---- top 5 communities table (type filter only) ----
+  // ---- momentum: median ppsf, last 3 months vs first 3 ----
+  const firstSet = new Set(months.slice(0, 3));
+  const lastSet = new Set(months.slice(-3));
+  const windowMedian = (list, set) => {
+    const vals = list.filter(r => set.has(r.date.slice(0, 7))).map(r => r.ppsf);
+    return vals.length ? median(vals) : NaN;
+  };
+  const momChange = list => {
+    const f = windowMedian(list, firstSet), l = windowMedian(list, lastSet);
+    return { first: f, last: l, change: isFinite(f) && isFinite(l) && f > 0 ? l / f - 1 : NaN };
+  };
+  const mom = momChange(filtered);
+  const signedPct = x => (isFinite(x) ? (x >= 0 ? '+' : '') + fmtPct(x) : '—');
+  document.getElementById('s-momentum').textContent = signedPct(mom.change);
+  document.getElementById('s-mom-first').textContent = fmtNum(mom.first);
+  document.getElementById('s-mom-last').textContent = fmtNum(mom.last);
+
+  // per-community momentum ranking (type + bedrooms filters only)
+  const momByComm = new Map();
+  for (const r of baseOnly) {
+    if (!momByComm.has(r.community)) momByComm.set(r.community, []);
+    momByComm.get(r.community).push(r);
+  }
+  const ranked = [...momByComm.entries()]
+    .map(([name, list]) => ({ name, change: momChange(list).change }))
+    .filter(c => isFinite(c.change))
+    .sort((a, b) => b.change - a.change);
+  const momRow = c => '<tr><td>' + c.name + '</td><td class="num">' + signedPct(c.change) + '</td></tr>';
+  document.getElementById('tbl-gainers').innerHTML = ranked.slice(0, 3).map(momRow).join('') || '<tr><td colspan="2">—</td></tr>';
+  document.getElementById('tbl-losers').innerHTML = ranked.slice(-3).reverse().map(momRow).join('') || '<tr><td colspan="2">—</td></tr>';
+
+  // ---- mix: apartment vs villa share by count ----
+  const mixCanvas = document.getElementById('c-mix');
+  if (!filtered.length) {
+    clearCanvas(mixCanvas, 'No data for this selection');
+  } else {
+    drawDonut(mixCanvas, [
+      { label: 'Apartments', value: filtered.filter(r => r.type === 'apartment').length, color: SERIES_COLORS[0] },
+      { label: 'Villas', value: filtered.filter(r => r.type === 'villa').length, color: SERIES_COLORS[1] }
+    ]);
+  }
+
+  // ---- top 5 communities table (type + bedrooms filters only) ----
   const byComm = new Map();
-  for (const r of typeOnly) {
+  for (const r of baseOnly) {
     if (!byComm.has(r.community)) byComm.set(r.community, []);
     byComm.get(r.community).push(r);
   }
@@ -155,6 +212,27 @@ for (const c of communities) {
   commSelect.appendChild(opt);
 }
 
+// CSV export of the fully filtered record set
+function exportCsv() {
+  const rows = currentFiltered().filtered;
+  const esc = v => {
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = ['date,community,type,beds,sqft,price,ppsf,offplan'];
+  for (const r of rows) {
+    lines.push([r.date, r.community, r.type, r.beds, r.sqft, r.price, r.ppsf, r.offplan].map(esc).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'market-pulse-export.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 document.getElementById('f-community').addEventListener('change', render);
 document.getElementById('f-type').addEventListener('change', render);
+document.getElementById('f-beds').addEventListener('change', render);
+document.getElementById('btn-export').addEventListener('click', exportCsv);
 render();

@@ -67,8 +67,10 @@
         <div class="stat"><div class="k">Profit</div><div class="v" id="oProfit">—</div></div>
         <div class="stat"><div class="k">ROI on cash invested</div><div class="v" id="oRoi">—</div></div>
         <div class="stat"><div class="k">Annualized ROI</div><div class="v" id="oAnnRoi">—</div></div>
+        <div class="stat"><div class="k">Break-even resale price</div><div class="v" id="oBreakeven">—</div></div>
       </div>
       <div class="verdict warn" id="oVerdict">—</div>
+      <button class="btn ghost small no-print" onclick="window.print()" style="margin-top:12px;">Print / PDF</button>
     </section>
   </div>
 
@@ -80,7 +82,42 @@
   </section>
 
   <section class="card">
-    <h2>Sensitivity — profit vs resale price</h2>
+    <h2>Flip now vs hold past handover</h2>
+    <div class="grid grid-2">
+      <div>
+        <div class="field">
+          <label for="inHoldValue">Expected value at handover (AED)</label>
+          <input type="number" id="inHoldValue" min="0" step="10000" placeholder="default: resale price +10%">
+        </div>
+        <div class="field">
+          <label for="inHoldRent">Expected annual rent at handover (AED)</label>
+          <input type="number" id="inHoldRent" min="0" step="1000" placeholder="default: 6% of handover value">
+        </div>
+        <div class="field">
+          <label for="inHoldYears">Years to hold after handover</label>
+          <input type="number" id="inHoldYears" min="0" step="1" placeholder="default: 2">
+        </div>
+        <p class="note">Hold assumes you pay the remaining balance to 100%, rent the unit out, then sell at the handover value with the same agency fee + NOC. Annualized over the full holding period.</p>
+      </div>
+      <div>
+        <table>
+          <thead>
+            <tr><th></th><th class="num">Flip now</th><th class="num">Hold</th></tr>
+          </thead>
+          <tbody id="oCompare"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="verdict warn" id="oHoldVerdict" style="margin-top:16px;">—</div>
+  </section>
+
+  <section class="card">
+    <h2>Sensitivity — annualized ROI grid</h2>
+    <div style="overflow-x:auto;">
+      <table id="oSensGrid"></table>
+    </div>
+    <p class="note">Rows: resale price around the entered value. Columns: months held. Cells show annualized ROI — green above 15%, gold above 0%, red below.</p>
+    <h2 style="margin-top:20px;">Sensitivity — profit vs resale price</h2>
     <canvas class="chart" id="sensChart"></canvas>
     <p class="note">Resale price varied from −10% to +20% around the entered value. Selling costs recalculated at each point.</p>
   </section>

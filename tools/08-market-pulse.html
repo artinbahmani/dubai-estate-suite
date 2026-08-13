@@ -35,12 +35,26 @@
           <option value="villa">Villas</option>
         </select>
       </div>
+      <div class="field">
+        <label for="f-beds">Bedrooms</label>
+        <select id="f-beds">
+          <option value="all">All</option>
+          <option value="studio">Studio</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3+">3+</option>
+        </select>
+      </div>
     </div>
     <div class="stats">
       <div class="stat"><div class="k">Transactions</div><div class="v" id="s-count">—</div></div>
       <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="s-ppsf">—</div></div>
       <div class="stat"><div class="k">Off-plan share</div><div class="v" id="s-offplan">—</div></div>
       <div class="stat"><div class="k">Average ticket</div><div class="v" id="s-ticket">—</div></div>
+    </div>
+    <div class="no-print" style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn ghost small" id="btn-export">Export CSV</button>
+      <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
     </div>
   </div>
 
@@ -60,6 +74,39 @@
     </div>
   </div>
 
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Momentum — last 3 months vs first 3</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Median ppsf change</div><div class="v" id="s-momentum">—</div></div>
+        <div class="stat"><div class="k">First 3 months</div><div class="v" id="s-mom-first">—</div></div>
+        <div class="stat"><div class="k">Last 3 months</div><div class="v" id="s-mom-last">—</div></div>
+      </div>
+      <div class="grid grid-2">
+        <table>
+          <thead>
+            <tr><th colspan="2">Top gainers</th></tr>
+            <tr><th>Community</th><th class="num">Change</th></tr>
+          </thead>
+          <tbody id="tbl-gainers"></tbody>
+        </table>
+        <table>
+          <thead>
+            <tr><th colspan="2">Top losers</th></tr>
+            <tr><th>Community</th><th class="num">Change</th></tr>
+          </thead>
+          <tbody id="tbl-losers"></tbody>
+        </table>
+      </div>
+      <p class="note">Median AED / sqft of the last 3 dataset months vs the first 3. Stat follows all filters; community ranking follows type and bedrooms filters.</p>
+    </div>
+    <div class="card">
+      <h2>Apartment vs villa mix</h2>
+      <canvas id="c-mix" class="chart"></canvas>
+      <p class="note">Share by transaction count for the current filter.</p>
+    </div>
+  </div>
+
   <div class="card">
     <h2>Top 5 communities by volume</h2>
     <table>
@@ -73,7 +120,7 @@
       </thead>
       <tbody id="tbl-top"></tbody>
     </table>
-    <p class="note">Ranked across all communities; follows the property type filter only.</p>
+    <p class="note">Ranked across all communities; follows the property type and bedrooms filters only.</p>
   </div>
 </main>
 <footer class="footer">Dubai Estate Suite · sample dataset — wire to DLD open data exports for live numbers</footer>

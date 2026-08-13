@@ -18,6 +18,16 @@ function fmtPct(x, d = 1) {
   return (x * 100).toFixed(d) + '%';
 }
 
+// 1234567 -> "AED 1.2M" (axis labels, compact stats)
+function fmtCompact(n, prefix = 'AED ') {
+  if (!isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e6) return sign + prefix + (abs / 1e6).toFixed(abs >= 1e7 ? 0 : 1) + 'M';
+  if (abs >= 1e3) return sign + prefix + Math.round(abs / 1e3) + 'K';
+  return sign + prefix + Math.round(abs);
+}
+
 // ---- finance ----
 
 // flows: [{ date: 'YYYY-MM-DD' | Date, amount }]  (negative = outflow)
@@ -54,6 +64,56 @@ function addMonths(dateStr, m) {
 // ---- canvas charts ----
 // palette for multi-series charts
 const SERIES_COLORS = ['#d4af37', '#58a6ff', '#3fb950', '#f85149', '#bc8cff', '#e3b341'];
+
+// ---- hover tooltips (auto-enabled by every draw* call) ----
+
+let _tipEl = null;
+function _tooltip() {
+  if (!_tipEl) {
+    _tipEl = document.createElement('div');
+    _tipEl.className = 'chart-tip';
+    document.body.appendChild(_tipEl);
+  }
+  return _tipEl;
+}
+
+// hits: [{ px, py, text }] or bars [{ x0, x1, text }]
+// segFn(x, y) -> string | null  overrides point matching
+function _attachTooltip(canvas, hits, segFn) {
+  canvas._hits = hits;
+  canvas._segFn = segFn || null;
+  if (canvas._tipAttached) return;
+  canvas._tipAttached = true;
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const tip = _tooltip();
+    let text = canvas._segFn ? canvas._segFn(x, y) : null;
+    if (!text && canvas._hits && canvas._hits.length) {
+      let best = null, bestD = Infinity;
+      for (const h of canvas._hits) {
+        let d;
+        if (h.x0 !== undefined) {
+          d = (x >= h.x0 && x <= h.x1 && y >= 0) ? 0 : Infinity; // bar: x-range match
+        } else {
+          d = Math.hypot(h.px - x, h.py - y);
+        }
+        if (d < bestD) { bestD = d; best = h; }
+      }
+      const threshold = best && best.x0 !== undefined ? 0 : 14;
+      if (best && bestD <= threshold) text = best.text;
+    }
+    if (text) {
+      tip.textContent = text;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top = (e.clientY + 14) + 'px';
+    } else {
+      tip.style.display = 'none';
+    }
+  });
+  canvas.addEventListener('mouseleave', () => { _tooltip().style.display = 'none'; });
+}
 
 function _chartSetup(canvas) {
   const dpr = window.devicePixelRatio || 1;
@@ -117,6 +177,7 @@ function drawLine(canvas, series, opts = {}) {
       ctx.fillText(String(opts.xLabels[idx]), x, h - 8);
     }
   }
+  const hits = [];
   series.forEach((s, si) => {
     const color = s.color || SERIES_COLORS[si % SERIES_COLORS.length];
     ctx.strokeStyle = color;
@@ -127,6 +188,9 @@ function drawLine(canvas, series, opts = {}) {
       const px = pad.left + (xCount > 1 ? (i / (xCount - 1)) * plotW : plotW / 2);
       const py = pad.top + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
       i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      const xTxt = opts.xLabels && opts.xLabels[i] !== undefined ? String(opts.xLabels[i]) : fmtNum(x);
+      const yTxt = opts.yFmt ? opts.yFmt(y) : fmtNum(y);
+      hits.push({ px, py, text: (s.label ? s.label + ' · ' : '') + xTxt + ': ' + yTxt });
     });
     ctx.stroke();
     if (s.label) {
@@ -134,6 +198,16 @@ function drawLine(canvas, series, opts = {}) {
       ctx.textAlign = 'left';
       ctx.fillText(s.label, pad.left + 10 + si * 110, pad.top + 6);
     }
+  });
+  // hover: snap to nearest point on the x axis (dense lines are hard to hit exactly)
+  _attachTooltip(canvas, hits, (x) => {
+    if (!hits.length) return null;
+    let best = null, bestD = Infinity;
+    for (const h of hits) {
+      const d = Math.abs(h.px - x);
+      if (d < bestD) { bestD = d; best = h; }
+    }
+    return bestD <= 30 ? best.text : null;
   });
 }
 
@@ -150,6 +224,7 @@ function drawBars(canvas, labels, datasets, opts = {}) {
   const groupW = plotW / labels.length;
   const barW = Math.min(34, (groupW * 0.7) / datasets.length);
   const yZero = pad.top + plotH - ((0 - yMin) / (yMax - yMin)) * plotH;
+  const hits = [];
   labels.forEach((lab, i) => {
     datasets.forEach((d, di) => {
       const v = d.values[i];
@@ -157,6 +232,10 @@ function drawBars(canvas, labels, datasets, opts = {}) {
       const y = pad.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
       ctx.fillStyle = d.color || SERIES_COLORS[di % SERIES_COLORS.length];
       ctx.fillRect(x, Math.min(y, yZero), barW - 3, Math.abs(yZero - y));
+      hits.push({
+        x0: x, x1: x + barW - 3,
+        text: lab + (d.label ? ' · ' + d.label : '') + ': ' + (opts.yFmt ? opts.yFmt(v) : fmtNum(v)),
+      });
     });
     ctx.fillStyle = '#9aa0a6';
     ctx.textAlign = 'center';
@@ -169,6 +248,10 @@ function drawBars(canvas, labels, datasets, opts = {}) {
     ctx.textAlign = 'left';
     ctx.fillText(d.label, pad.left + 10 + di * 110, pad.top - 4);
   });
+  _attachTooltip(canvas, hits, (x) => {
+    for (const hb of hits) if (x >= hb.x0 && x <= hb.x1) return hb.text;
+    return null;
+  });
 }
 
 // items: [{ label, value, color }]
@@ -177,6 +260,7 @@ function drawDonut(canvas, items, opts = {}) {
   const total = items.reduce((s, i) => s + i.value, 0);
   const cx = h / 2 + 10, cy = h / 2, r = h / 2 - 16, rIn = r * 0.62;
   let a = -Math.PI / 2;
+  const segs = [];
   items.forEach((it, i) => {
     const frac = total > 0 ? it.value / total : 0;
     const a2 = a + frac * Math.PI * 2;
@@ -186,6 +270,7 @@ function drawDonut(canvas, items, opts = {}) {
     ctx.closePath();
     ctx.fillStyle = it.color || SERIES_COLORS[i % SERIES_COLORS.length];
     ctx.fill();
+    segs.push({ a0: a, a1: a2, text: it.label + ': ' + fmtNum(it.value) + (total > 0 ? ' (' + fmtPct(it.value / total) + ')' : '') });
     a = a2;
   });
   ctx.textAlign = 'left';
@@ -197,6 +282,15 @@ function drawDonut(canvas, items, opts = {}) {
     ctx.fillStyle = '#e8e9ea';
     const pctTxt = total > 0 ? ' (' + fmtPct(it.value / total) + ')' : '';
     ctx.fillText(it.label + pctTxt, w * 0.45 + 18, y);
+  });
+  _attachTooltip(canvas, null, (x, y) => {
+    const dx = x - cx, dy = y - cy;
+    const rad = Math.hypot(dx, dy);
+    if (rad < rIn || rad > r) return null;
+    let ang = Math.atan2(dy, dx);
+    if (ang < -Math.PI / 2) ang += Math.PI * 2;
+    for (const s of segs) if (ang >= s.a0 && ang <= s.a1) return s.text;
+    return null;
   });
 }
 
@@ -220,6 +314,7 @@ function drawScatter(canvas, points, opts = {}) {
     const x = pad.left + ((t - xMin) / (xMax - xMin || 1)) * plotW;
     ctx.fillText(opts.xFmt ? opts.xFmt(t) : fmtNum(t), x, h - 8);
   }
+  const hits = [];
   for (const p of points) {
     const px = pad.left + ((p.x - xMin) / (xMax - xMin || 1)) * plotW;
     const py = pad.top + plotH - ((p.y - yMin) / (yMax - yMin)) * plotH;
@@ -227,7 +322,12 @@ function drawScatter(canvas, points, opts = {}) {
     ctx.arc(px, py, p.r || 3.5, 0, Math.PI * 2);
     ctx.fillStyle = p.color || 'rgba(212,175,55,0.55)';
     ctx.fill();
+    hits.push({
+      px, py,
+      text: (opts.xFmt ? opts.xFmt(p.x) : fmtNum(p.x)) + ' · ' + (opts.yFmt ? opts.yFmt(p.y) : fmtNum(p.y)),
+    });
   }
+  _attachTooltip(canvas, hits);
 }
 
 // small helper: read numeric input value

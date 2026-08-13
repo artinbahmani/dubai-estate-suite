@@ -71,19 +71,97 @@
     </section>
   </div>
 
+  <div class="grid grid-2">
+    <section class="card">
+      <h2>Strategy</h2>
+      <div class="field">
+        <label for="strategy">Rental strategy</label>
+        <select id="strategy">
+          <option value="long" selected>Long-term lease</option>
+          <option value="short">Short-term (holiday home)</option>
+        </select>
+      </div>
+      <div class="field" id="upliftField" hidden>
+        <label for="uplift">Short-term revenue uplift (%)</label>
+        <input type="number" id="uplift" value="25" min="0" max="200" step="1">
+      </div>
+      <table>
+        <thead>
+          <tr><th></th><th class="num">Net income / yr</th><th class="num">Net yield</th></tr>
+        </thead>
+        <tbody>
+          <tr id="cmpLong"><td>Long-term</td><td class="num" id="cmpLongNet">—</td><td class="num" id="cmpLongYield">—</td></tr>
+          <tr id="cmpShort"><td>Short-term</td><td class="num" id="cmpShortNet">—</td><td class="num" id="cmpShortYield">—</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Short-term applies the revenue uplift to rent, 15% management and AED 400/month utilities. The active strategy drives the stats and charts below.</p>
+    </section>
+
+    <section class="card">
+      <h2>Financing</h2>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="mortgage" style="width:auto; margin-right:6px;">
+          Finance with a mortgage
+        </label>
+      </div>
+      <div id="mortgageFields" hidden>
+        <div class="field">
+          <label for="ltv">Loan-to-value (%)</label>
+          <input type="number" id="ltv" value="70" min="0" max="100" step="1">
+        </div>
+        <div class="field">
+          <label for="rate">Interest rate (% / yr)</label>
+          <input type="number" id="rate" value="5.5" min="0" max="30" step="0.1">
+        </div>
+        <div class="field">
+          <label for="years">Term (years)</label>
+          <input type="number" id="years" value="25" min="1" max="30" step="1">
+        </div>
+      </div>
+      <p class="note">Cash-on-cash return = net income minus annual debt service, over the cash actually invested (down payment). Without a mortgage it equals the net yield.</p>
+    </section>
+  </div>
+
   <section class="card">
     <h2>Yield</h2>
     <div class="stats">
       <div class="stat"><div class="k">Gross yield</div><div class="v" id="sGross">—</div></div>
       <div class="stat"><div class="k">Annual costs</div><div class="v neg" id="sCosts">—</div></div>
-      <div class="stat"><div class="k">Net yield</div><div class="v pos" id="sNet">—</div></div>
+      <div class="stat"><div class="k">Net yield (unleveraged)</div><div class="v pos" id="sNet">—</div></div>
+      <div class="stat"><div class="k">Cash-on-cash return</div><div class="v pos" id="sCoC">—</div></div>
       <div class="stat"><div class="k">Monthly net income</div><div class="v" id="sMonthly">—</div></div>
+      <div class="stat"><div class="k">Mortgage payment / mo</div><div class="v" id="sMortgage">—</div></div>
+    </div>
+    <div class="no-print" style="margin-top:12px;">
+      <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
     </div>
   </section>
 
   <section class="card">
     <h2>Rent vs costs</h2>
     <canvas class="chart" id="chart"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>5-year projection</h2>
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="rentGrowth">Rent growth (% / yr)</label>
+        <input type="number" id="rentGrowth" value="3" min="0" max="30" step="0.5">
+      </div>
+      <div class="field">
+        <label for="appr">Appreciation (% / yr)</label>
+        <input type="number" id="appr" value="4" min="0" max="30" step="0.5">
+      </div>
+    </div>
+    <canvas class="chart" id="projChart"></canvas>
+    <div class="stats" style="margin-top:12px;">
+      <div class="stat"><div class="k">Total 5-yr net income</div><div class="v" id="sNet5">—</div></div>
+      <div class="stat"><div class="k">Value after 5 yrs</div><div class="v" id="sVal5">—</div></div>
+      <div class="stat"><div class="k">Total 5-yr return (unleveraged)</div><div class="v pos" id="sTotalRet">—</div></div>
+    </div>
+    <p class="note">Net income per year for the active strategy, with rent compounding at the growth rate; service charge and utilities held flat. Total return = 5 years of net income plus appreciation, over the purchase price.</p>
   </section>
 
   <section class="card">

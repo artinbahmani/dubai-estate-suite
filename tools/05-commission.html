@@ -109,6 +109,66 @@
       </div>
     </div>
   </div>
+
+  <div class="card">
+    <h2>Goal mode</h2>
+    <div class="field">
+      <label for="goal-target">Annual income target (AED)</label>
+      <input type="number" id="goal-target" value="500000" min="0" step="10000">
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Deals needed / month <span class="range-val" id="goal-seg"></span></div><div class="v" id="goal-deals">—</div></div>
+      <div class="stat"><div class="k">Current pace / year</div><div class="v" id="goal-pace">—</div></div>
+    </div>
+    <div class="verdict ok" id="goal-verdict"></div>
+  </div>
+
+  <div class="card">
+    <h2>Quarter pipeline</h2>
+    <div class="grid grid-2 no-print">
+      <div class="field">
+        <label for="pl-seg">Segment</label>
+        <select id="pl-seg">
+          <option value="offplan">Off-plan</option>
+          <option value="resale">Resale</option>
+          <option value="rental">Rental</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="pl-value">Deal value / annual rent (AED)</label>
+        <input type="number" id="pl-value" value="1500000" min="0" step="50000">
+      </div>
+      <div class="field">
+        <label for="pl-pct">Commission (%)</label>
+        <input type="number" id="pl-pct" value="5" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn" id="pl-add" type="button">Add deal</button>
+      </div>
+    </div>
+    <table id="pl-table">
+      <thead>
+        <tr>
+          <th>Segment</th><th class="num">Value (AED)</th><th class="num">Comm %</th><th class="num">Gross (AED)</th><th class="num">Agent take-home (AED)</th><th class="no-print"></th>
+        </tr>
+      </thead>
+      <tbody id="pl-body"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">Quarterly agent income</td><td class="num" id="pl-total-q">—</td><td class="no-print"></td>
+        </tr>
+        <tr>
+          <td colspan="4">Annualized agent income</td><td class="num" id="pl-total-y">—</td><td class="no-print"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <p class="note" id="pl-empty" hidden>No deals in the pipeline yet — add one above.</p>
+    <div class="no-print" style="margin-top:10px;">
+      <button class="btn ghost small" id="pl-export" type="button">Export CSV</button>
+      <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
+    </div>
+  </div>
 </main>
 <footer class="footer">Dubai Estate Suite · indicative figures only · confirm commission terms in your brokerage agreement</footer>
 </body>

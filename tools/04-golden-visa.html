@@ -40,6 +40,10 @@
   .pbar-label { font-size: 12px; color: var(--muted); }
   .badge.warn { border-color: rgba(248,81,73,0.5); color: var(--red); }
   .badge.ok { border-color: rgba(63,185,80,0.5); color: var(--green); }
+  .checklist { margin: 0; padding-left: 22px; }
+  .checklist li { margin: 8px 0; }
+  .checklist input { margin-right: 8px; accent-color: var(--gold); }
+  .checklist li.done label { color: var(--muted); text-decoration: line-through; }
 </style>
 </head>
 <body>
@@ -56,6 +60,7 @@
     <h2>Properties</h2>
     <div id="rows"></div>
     <button class="btn ghost" id="addProperty">Add property</button>
+    <button class="btn ghost no-print" id="resetAll">Reset</button>
   </div>
 
   <div class="card">
@@ -84,6 +89,31 @@
     </table>
 
     <p class="note">Rules per DLD/GDRFA: the AED 2,000,000 threshold is on purchase price per title deed (ready) or Oqood (off-plan); multiple properties may combine. Mortgaged properties have been eligible since January 2024 — the old AED 1M minimum cash-paid rule was removed — but a bank NOC showing the amount already paid is required. Off-plan properties count at full price only when at least 50% of the price is paid and construction is at least 50% complete. Verify current requirements with GDRFA before filing.</p>
+    <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
+  </div>
+
+  <div class="card" id="gapCard" style="display:none">
+    <h2>Gap planner</h2>
+    <div class="field" style="max-width:320px">
+      <label>Additional budget available (AED)</label>
+      <input type="number" id="extraBudget" min="0" step="10000" value="0">
+    </div>
+    <div class="verdict warn" id="gapVerdict"></div>
+  </div>
+
+  <div class="card">
+    <h2>Application checklist</h2>
+    <ol class="checklist" id="checklist">
+      <li><label><input type="checkbox"> Title deed (ready) or Oqood certificate (off-plan) for each property</label></li>
+      <li><label><input type="checkbox"> Bank NOC letter showing amount paid — required if any property is mortgaged</label></li>
+      <li><label><input type="checkbox"> Passport copy and Emirates ID</label></li>
+      <li><label><input type="checkbox"> Passport-size photo, white background</label></li>
+      <li><label><input type="checkbox"> Valid health insurance</label></li>
+      <li><label><input type="checkbox"> Submit application via DLD/Cube centre or GDRFA</label></li>
+      <li><label><input type="checkbox"> Medical fitness test</label></li>
+      <li><label><input type="checkbox"> Emirates ID biometrics</label></li>
+      <li><label><input type="checkbox"> Visa stamping</label></li>
+    </ol>
   </div>
 </main>
 <footer class="footer">Dubai Estate Suite · verify figures against DLD before client use</footer>

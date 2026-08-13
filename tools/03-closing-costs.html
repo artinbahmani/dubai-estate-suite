@@ -14,7 +14,7 @@
 </header>
 <main class="container">
   <h1>Closing Cost Calculator</h1>
-  <p class="subtitle">Full buyer-side cost breakdown for a secondary purchase — DLD, trustee, agency, mortgage and transfer-day fees.</p>
+  <p class="subtitle">Full buyer-side cost breakdown for secondary and off-plan purchases — DLD, trustee or Oqood, agency, mortgage and transfer-day fees.</p>
 
   <div class="grid grid-2">
     <div class="card">
@@ -22,6 +22,13 @@
       <div class="field">
         <label for="price">Purchase price (AED)</label>
         <input type="number" id="price" value="1500000" min="0" step="50000">
+      </div>
+      <div class="field">
+        <label for="ptype">Purchase type</label>
+        <select id="ptype">
+          <option value="secondary" selected>Secondary (ready)</option>
+          <option value="offplan">Off-plan</option>
+        </select>
       </div>
       <div class="field">
         <label for="financing">Financing</label>
@@ -39,6 +46,11 @@
         <input type="range" id="agencyPct" min="0" max="5" step="0.25" value="2">
       </div>
       <div class="field">
+        <label for="dldSplit">DLD fee paid by buyer (%) <span class="range-val" id="dldSplitVal">100%</span></label>
+        <input type="range" id="dldSplit" min="0" max="100" step="5" value="100">
+        <div class="note">Buyers customarily pay the full 4% DLD fee, but splits with the seller are negotiable.</div>
+      </div>
+      <div class="field" id="nocField">
         <label for="nocFee">NOC fee (AED)</label>
         <input type="number" id="nocFee" value="1000" min="0" step="100">
         <div class="note">Developer NOC fees typically range AED 500 to AED 5,000.</div>
@@ -59,6 +71,13 @@
 
     <div class="card">
       <h2>Summary</h2>
+      <div class="field no-print" style="max-width:260px;">
+        <label for="currency">Display currency (fixed rate 1 USD = 3.6725 AED)</label>
+        <select id="currency">
+          <option value="aed" selected>AED</option>
+          <option value="usd">USD</option>
+        </select>
+      </div>
       <div class="stats">
         <div class="stat"><div class="k">Total fees</div><div class="v" id="sFees">—</div></div>
         <div class="stat"><div class="k">Fees as % of price</div><div class="v" id="sPct">—</div></div>
@@ -66,6 +85,7 @@
         <div class="stat" id="loanStat"><div class="k">Loan amount</div><div class="v" id="sLoan">—</div></div>
       </div>
       <div class="note">Typical all-in buyer closing cost in Dubai runs ~7-8% of the purchase price. The DLD fee of 4% is customarily paid by the buyer.</div>
+      <p class="no-print" style="margin-top:12px;"><button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button></p>
     </div>
   </div>
 
@@ -80,7 +100,7 @@
       </table>
     </div>
     <div class="card">
-      <h2>Cost mix</h2>
+      <h2 id="donutTitle">Cost mix</h2>
       <canvas id="donut" class="chart"></canvas>
     </div>
   </div>

@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="../assets/shared.js"></script>
 <script src="../data/transactions.js"></script>
+<script src="../data/rent-index.js"></script>
 <script src="09-instant-cma.js" defer></script>
 </head>
 <body>
@@ -48,6 +49,18 @@
         <label for="sqft">Property size (sqft)</label>
         <input id="sqft" type="number" min="100" step="10" value="1000">
       </div>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="trendOn" checked style="width:auto; margin-right:6px;">
+          Trend-adjust comps to latest month
+        </label>
+      </div>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="offplanOn" checked style="width:auto; margin-right:6px;">
+          Include off-plan comps
+        </label>
+      </div>
     </div>
   </div>
 
@@ -58,15 +71,19 @@
       <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="sMedian">—</div></div>
       <div class="stat"><div class="k">Estimated value</div><div class="v" id="sValue">—</div></div>
       <div class="stat"><div class="k">Value range (25th–75th)</div><div class="v" id="sRange">—</div></div>
+      <div class="stat"><div class="k">Indicative gross yield</div><div class="v" id="sYield">—</div></div>
     </div>
     <div class="note" id="fallbackNote"></div>
     <div class="verdict ok" id="confidence"></div>
+    <div style="margin-top:12px;">
+      <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
+    </div>
   </div>
 
   <div class="card">
     <h2>Comps — size vs price</h2>
     <canvas class="chart" id="scatter"></canvas>
-    <div class="note">Gold dots are comparable transactions. The red dot is the subject property at the estimated value.</div>
+    <div class="note" id="scatterNote">Gold dots are comparable transactions. The red dot is the subject property at the estimated value.</div>
   </div>
 
   <div class="card">
@@ -83,6 +100,9 @@
       </thead>
       <tbody id="compsBody"></tbody>
     </table>
+    <div style="margin-top:12px;">
+      <button class="btn ghost small no-print" id="exportCsv">Export CSV</button>
+    </div>
   </div>
 </main>
 <footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>

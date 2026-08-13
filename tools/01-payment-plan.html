@@ -34,6 +34,13 @@
         <input type="number" id="constrMonths" value="36" min="3" max="120" step="3">
       </div>
       <div class="field">
+        <label for="milestoneFreq">Construction milestone frequency</label>
+        <select id="milestoneFreq">
+          <option value="3" selected>Quarterly</option>
+          <option value="1">Monthly</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="planTemplate">Plan template (construction / handover)</label>
         <select id="planTemplate">
           <option value="60">60 / 40</option>
@@ -69,9 +76,17 @@
         <label for="discRate">Annual discount rate (%)</label>
         <input type="number" id="discRate" value="8" min="0" max="30" step="0.5">
       </div>
+      <div class="field">
+        <label for="cashDisc">All-cash discount (%)</label>
+        <input type="number" id="cashDisc" value="5" min="0" max="30" step="0.5">
+      </div>
       <div class="stats">
         <div class="stat"><div class="k">NPV of payment stream</div><div class="v" id="statNpv">—</div></div>
         <div class="stat"><div class="k">IRR if sold at handover</div><div class="v" id="statIrr">—</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Scenario A — payment plan (present cost)</div><div class="v" id="statPlanPv">—</div></div>
+        <div class="stat"><div class="k">Scenario B — all-cash price</div><div class="v" id="statCashPrice">—</div></div>
       </div>
       <div class="verdict" id="verdict">—</div>
       <p class="note">Standard Emaar/Sobha plans are 60/40; post-handover plans (Damac/Binghatti style) typically carry a 10–20% price premium; cash discounts of 3–7% are common.</p>
@@ -79,7 +94,7 @@
   </div>
 
   <div class="card">
-    <h2>Summary</h2>
+    <h2>Summary <button class="btn ghost small no-print" onclick="window.print()" style="float:right;">Print / PDF</button></h2>
     <div class="stats">
       <div class="stat"><div class="k">Total paid</div><div class="v" id="statTotal">—</div></div>
       <div class="stat"><div class="k">Paid by handover</div><div class="v" id="statByHandover">—</div></div>
@@ -93,7 +108,13 @@
   </div>
 
   <div class="card">
-    <h2>Milestone schedule</h2>
+    <h2>IRR sensitivity</h2>
+    <p class="note">IRR if sold at handover, vs the expected handover value adjusted from -20% to +30%.</p>
+    <canvas class="chart" id="irrChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Milestone schedule <button class="btn ghost small no-print" id="exportCsv" style="float:right;">Export CSV</button></h2>
     <table>
       <thead>
         <tr>

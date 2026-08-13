@@ -4,14 +4,7 @@
 const AGENCY_FEE_RATE = 0.02;
 const VAT_RATE = 0.05;
 const SENS_STEPS = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20];
-
-function aedCompact(v) {
-  const sign = v < 0 ? '-' : '';
-  const a = Math.abs(v);
-  if (a >= 1e6) return sign + 'AED ' + (a / 1e6).toFixed(1) + 'M';
-  if (a >= 1e3) return sign + 'AED ' + (a / 1e3).toFixed(0) + 'k';
-  return sign + 'AED ' + Math.round(a);
-}
+const HOLD_YEAR_OFFSETS = [0, 6, 12];
 
 // Selling costs and net cash to the seller at a given resale price.
 // Net is the same whether the buyer takes over the plan or the seller
@@ -28,6 +21,24 @@ function setStat(id, text, cls) {
   el.className = 'v' + (cls ? ' ' + cls : '');
 }
 
+// Empty input falls back to the documented default.
+function numOr(id, fallback) {
+  const raw = document.getElementById(id).value.trim();
+  if (raw === '') return fallback;
+  const v = parseFloat(raw);
+  return isFinite(v) ? v : fallback;
+}
+
+function annualized(roi, months) {
+  return isFinite(roi) && roi > -1 && months > 0
+    ? Math.pow(1 + roi, 12 / months) - 1
+    : NaN;
+}
+
+function roiClass(v) {
+  return v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+}
+
 function render() {
   const price = numVal('inPrice');
   const pctPaid = numVal('inPctPaid') / 100;
@@ -42,17 +53,20 @@ function render() {
   const c = closingAt(resale, outstanding, vatOn, noc);
   const profit = c.net - invested;
   const roi = invested > 0 ? profit / invested : NaN;
-  const annRoi = isFinite(roi) && roi > -1 && months > 0
-    ? Math.pow(1 + roi, 12 / months) - 1
-    : NaN;
+  const annRoi = annualized(roi, months);
+
+  // resale price where proceeds exactly cover costs + cash in (zero profit)
+  const feeRate = AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
+  const breakeven = (invested + outstanding + noc) / (1 - feeRate);
 
   setStat('oCash', fmtAED(invested));
   setStat('oOutstanding', fmtAED(outstanding));
   setStat('oCosts', fmtAED(c.costs));
   setStat('oNetCash', fmtAED(c.net), c.net < 0 ? 'neg' : '');
-  setStat('oProfit', fmtAED(profit), profit > 0 ? 'pos' : profit < 0 ? 'neg' : '');
-  setStat('oRoi', fmtPct(roi), roi > 0 ? 'pos' : roi < 0 ? 'neg' : '');
-  setStat('oAnnRoi', fmtPct(annRoi), annRoi > 0 ? 'pos' : annRoi < 0 ? 'neg' : '');
+  setStat('oProfit', fmtAED(profit), roiClass(profit));
+  setStat('oRoi', fmtPct(roi), roiClass(roi));
+  setStat('oAnnRoi', fmtPct(annRoi), roiClass(annRoi));
+  setStat('oBreakeven', fmtAED(breakeven), resale >= breakeven ? 'pos' : 'neg');
 
   // verdict on annualized return
   const v = document.getElementById('oVerdict');
@@ -89,6 +103,60 @@ function render() {
     '<tr><td>Less: cash invested so far</td><td class="num">' + fmtAED(-invested) + '</td></tr>' +
     '<tr><td><strong>Profit</strong></td><td class="num"><strong>' + fmtAED(profit) + '</strong></td></tr>';
 
+  // flip vs hold — hold pays the plan to 100%, rents out, then sells at handover value
+  const holdValue = numOr('inHoldValue', resale * 1.1);
+  const holdRent = numOr('inHoldRent', holdValue * 0.06);
+  const holdYears = Math.max(0, numOr('inHoldYears', 2));
+  const holdClosing = closingAt(holdValue, 0, vatOn, noc); // balance settled by then
+  const holdNetCash = holdClosing.net + holdRent * holdYears;
+  const holdDeployed = invested + outstanding;
+  const holdProfit = holdNetCash - holdDeployed;
+  const holdRoi = holdDeployed > 0 ? holdProfit / holdDeployed : NaN;
+  const holdAnnRoi = annualized(holdRoi, months + holdYears * 12);
+
+  document.getElementById('oCompare').innerHTML = [
+    ['Cash deployed', invested, holdDeployed],
+    ['Net cash out', c.net, holdNetCash],
+    ['Profit', profit, holdProfit],
+  ].map(([label, f, h]) =>
+    '<tr><td>' + label + '</td><td class="num">' + fmtAED(f) + '</td><td class="num">' + fmtAED(h) + '</td></tr>'
+  ).join('') + [
+    ['ROI on cash', roi, holdRoi],
+    ['Annualized ROI', annRoi, holdAnnRoi],
+  ].map(([label, f, h]) =>
+    '<tr><td><strong>' + label + '</strong></td><td class="num"><strong>' + fmtPct(f) + '</strong></td><td class="num"><strong>' + fmtPct(h) + '</strong></td></tr>'
+  ).join('');
+
+  const hv = document.getElementById('oHoldVerdict');
+  if (!isFinite(annRoi) || !isFinite(holdAnnRoi)) {
+    hv.className = 'verdict warn';
+    hv.textContent = 'Enter a valid deal to compare flipping vs holding.';
+  } else if (holdAnnRoi > annRoi) {
+    hv.className = 'verdict ok';
+    hv.textContent = 'Hold wins — ' + fmtPct(holdAnnRoi) + ' annualized vs ' + fmtPct(annRoi) + ' if you flip now, on ' + fmtAED(holdDeployed) + ' deployed instead of ' + fmtAED(invested) + '.';
+  } else {
+    hv.className = 'verdict warn';
+    hv.textContent = 'Flip wins — ' + fmtPct(annRoi) + ' annualized now vs ' + fmtPct(holdAnnRoi) + ' if you hold ' + holdYears + ' year' + (holdYears === 1 ? '' : 's') + ' past handover.';
+  }
+
+  // sensitivity grid: annualized ROI by resale step x months held
+  const monthCols = HOLD_YEAR_OFFSETS.map(d => months + d);
+  let grid = '<thead><tr><th>Resale price</th>' +
+    monthCols.map((m, i) => '<th class="num">' + (i === 0 ? m + ' mo (now)' : '+' + HOLD_YEAR_OFFSETS[i] + ' mo') + '</th>').join('') +
+    '</tr></thead><tbody>';
+  SENS_STEPS.forEach(s => {
+    const r = resale * (1 + s);
+    grid += '<tr><td>' + (s > 0 ? '+' : '') + Math.round(s * 100) + '% · ' + fmtCompact(r) + '</td>';
+    monthCols.forEach(m => {
+      const cc = closingAt(r, outstanding, vatOn, noc);
+      const a = annualized(invested > 0 ? (cc.net - invested) / invested : NaN, m);
+      const color = !isFinite(a) ? '#9aa0a6' : a > 0.15 ? '#3fb950' : a >= 0 ? '#d4af37' : '#f85149';
+      grid += '<td class="num" style="color:' + color + ';font-weight:600;">' + fmtPct(a) + '</td>';
+    });
+    grid += '</tr>';
+  });
+  document.getElementById('oSensGrid').innerHTML = grid + '</tbody>';
+
   // sensitivity: profit across resale price steps
   const points = SENS_STEPS.map((s, i) => {
     const cc = closingAt(resale * (1 + s), outstanding, vatOn, noc);
@@ -98,7 +166,7 @@ function render() {
     [{ label: 'Profit', color: '#d4af37', points }],
     {
       xLabels: SENS_STEPS.map(s => (s > 0 ? '+' : '') + Math.round(s * 100) + '%'),
-      yFmt: aedCompact
+      yFmt: v => fmtCompact(v)
     });
 }
 
