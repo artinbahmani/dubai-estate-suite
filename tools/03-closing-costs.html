@@ -51,6 +51,15 @@
         <input type="range" id="dldSplit" min="0" max="100" step="5" value="100">
         <div class="note">Buyers customarily pay the full 4% DLD fee, but splits with the seller are negotiable.</div>
       </div>
+      <div class="field" id="waiverField" style="display:none;">
+        <label for="dldWaiver">Developer DLD waiver</label>
+        <select id="dldWaiver">
+          <option value="0" selected>None</option>
+          <option value="50">50% waiver</option>
+          <option value="100">100% waiver</option>
+        </select>
+        <div class="note">Emaar-type promos sometimes cover part or all of the 4% DLD/Oqood fee on off-plan launches.</div>
+      </div>
       <div class="field" id="nocField">
         <label for="nocFee">NOC fee (AED)</label>
         <input type="number" id="nocFee" value="1000" min="0" step="100">
@@ -95,7 +104,7 @@
       <h2>Cost breakdown</h2>
       <table>
         <thead>
-          <tr><th>Item</th><th class="num">Amount</th></tr>
+          <tr><th>Item</th><th class="num">Amount</th><th>When</th></tr>
         </thead>
         <tbody id="costRows"></tbody>
       </table>

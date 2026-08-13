@@ -38,6 +38,23 @@ function annualized(roi, months) {
     : NaN;
 }
 
+// anchor date for XIRR flows — only relative month gaps matter
+const BASE_DATE = '2026-01-01';
+
+// outflow flows for the paid-to-date cash: equal quarterly installments from
+// month 0 to months held ('staged'), or one lump sum at month 0 ('upfront').
+function investedOutflows(total, months, rhythm) {
+  if (total <= 0) return [];
+  if (rhythm === 'upfront') return [{ date: BASE_DATE, amount: -total }];
+  const n = Math.max(1, Math.floor(months / 3) + 1);
+  const each = total / n;
+  const flows = [];
+  for (let i = 0; i < n; i++) {
+    flows.push({ date: addMonths(BASE_DATE, i * 3), amount: -each });
+  }
+  return flows;
+}
+
 function roiClass(v) {
   return v > 0 ? 'pos' : v < 0 ? 'neg' : '';
 }
@@ -61,6 +78,7 @@ function render() {
   const vatOn = document.getElementById('inVat').checked;
   const mode = strVal('inBalance');
   const dev = strVal('inDeveloper');
+  const rhythm = strVal('inRhythm');
 
   // clamp % paid to [0, 100] and warn visibly when the typed value exceeded 100
   const pctWarn = document.getElementById('oPctWarn');
@@ -78,6 +96,13 @@ function render() {
   const roi = invested > 0 ? profit / invested : NaN;
   const annRoi = annualized(roi, months);
 
+  // true XIRR on the payment rhythm — staged credits cash as it is paid in
+  const flipFlows = months > 0
+    ? [...investedOutflows(invested, months, rhythm),
+       { date: addMonths(BASE_DATE, months), amount: c.net }]
+    : [];
+  const flipXirr = xirr(flipFlows);
+
   // resale price where proceeds exactly cover costs + cash in (zero profit)
   const feeRate = AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
   const breakeven = (invested + outstanding + noc + assignFee) / (1 - feeRate);
@@ -89,6 +114,7 @@ function render() {
   setStat('oProfit', fmtAED(profit), roiClass(profit));
   setStat('oRoi', fmtPct(roi), roiClass(roi));
   setStat('oAnnRoi', fmtPct(annRoi), roiClass(annRoi));
+  setStat('oXirr', fmtPct(flipXirr), roiClass(flipXirr));
   setStat('oBreakeven', fmtAED(breakeven), resale >= breakeven ? 'pos' : 'neg');
 
   // verdict on annualized return
@@ -152,6 +178,19 @@ function render() {
   const holdRoi = holdDeployed > 0 ? holdProfit / holdDeployed : NaN;
   const holdAnnRoi = annualized(holdRoi, months + holdYears * 12);
 
+  // hold XIRR — same staged rhythm, remaining balance paid at handover,
+  // net rent each year, sale proceeds at exit
+  const holdEndMonth = months + holdYears * 12;
+  const holdFlows = months > 0
+    ? [...investedOutflows(invested, months, rhythm),
+       { date: addMonths(BASE_DATE, months), amount: -outstanding }]
+    : [];
+  for (let y = 1; y <= holdYears; y++) {
+    holdFlows.push({ date: addMonths(BASE_DATE, months + y * 12), amount: holdRent * netRentFactor });
+  }
+  if (months > 0) holdFlows.push({ date: addMonths(BASE_DATE, holdEndMonth), amount: holdClosing.net });
+  const holdXirr = xirr(holdFlows);
+
   document.getElementById('oCompare').innerHTML = [
     ['Cash deployed', invested, holdDeployed],
     ['Net cash out', c.net, holdNetCash],
@@ -161,6 +200,7 @@ function render() {
   ).join('') + [
     ['ROI on cash', roi, holdRoi],
     ['Annualized ROI', annRoi, holdAnnRoi],
+    ['XIRR', flipXirr, holdXirr],
   ].map(([label, f, h]) =>
     '<tr><td><strong>' + label + '</strong></td><td class="num"><strong>' + fmtPct(f) + '</strong></td><td class="num"><strong>' + fmtPct(h) + '</strong></td></tr>'
   ).join('');

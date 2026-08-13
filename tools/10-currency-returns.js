@@ -160,6 +160,8 @@ function render() {
     }
   ], { yFmt: fmtPct });
 
+  renderForward(ccy, curVal);
+
   // per-USD rate path for the selected currency, all years
   const fxDec = (ccy === 'INR' || ccy === 'RUB') ? 0 : 2;
   document.getElementById('fxTitle').textContent = 'FX rate: ' + ccy + ' per USD';
@@ -173,6 +175,53 @@ function render() {
   });
 }
 
+// forward scenario: grow current AED value and the latest FX rate, convert to
+// home currency; scenario shifts both rates by +/-2 pp. Projection, not a forecast.
+function renderForward(ccy, curVal) {
+  const years = Math.max(1, Math.round(numVal('fYears')));
+  const appr = numVal('fAppr') / 100;
+  const fx = numVal('fFx') / 100;
+  const scen = strVal('fScen');
+  const shift = scen === 'best' ? 0.02 : scen === 'worst' ? -0.02 : 0;
+
+  const rateNow = FX_DATA.perUSD[ccy][LAST];
+  const todayHome = toHome(curVal, ccy, LAST);
+  const year0 = FX_DATA.years[LAST];
+
+  // projected home value k years out under given appreciation / FX-change rates
+  function proj(k, a, f) {
+    return (curVal * Math.pow(1 + a, k) / AED_PER_USD) * rateNow * Math.pow(1 + f, k);
+  }
+
+  const scens = [
+    { key: 'base', label: 'Base', a: appr, f: fx },
+    { key: 'best', label: 'Best', a: appr + 0.02, f: fx + 0.02 },
+    { key: 'worst', label: 'Worst', a: appr - 0.02, f: fx - 0.02 }
+  ];
+
+  // stats for the selected scenario: return vs today's home value
+  const s = scens.find(x => x.key === scen);
+  const endHome = proj(years, s.a, s.f);
+  const fRet = todayHome > 0 ? endHome / todayHome - 1 : NaN;
+  const fAnn = annualized(fRet, years);
+  document.getElementById('kFVal').textContent = 'Projected value, ' + ccy + ' (' + s.label + ')';
+  document.getElementById('sFVal').textContent = ccy + ' ' + fmtNum(Math.round(endHome));
+  const sFRet = document.getElementById('sFRet');
+  sFRet.textContent = fmtPct(fRet);
+  sFRet.className = 'v' + (fRet > 0 ? ' pos' : fRet < 0 ? ' neg' : '');
+  document.getElementById('sFAnn').textContent = fmtPct(fAnn);
+
+  // one line per scenario, year 0 = today's home value
+  drawLine(document.getElementById('chartFwd'), scens.map((sc, i) => ({
+    label: sc.label,
+    color: SERIES_COLORS[i],
+    points: Array.from({ length: years + 1 }, (_, k) => [year0 + k, proj(k, sc.a, sc.f)])
+  })), {
+    xLabels: Array.from({ length: years + 1 }, (_, k) => String(year0 + k)),
+    yFmt: v => fmtCompact(v, ccy + ' ')
+  });
+}
+
 // purchase-year options: every year except the latest (need at least 1 year of holding)
 const pYearSel = document.getElementById('pYear');
 FX_DATA.years.slice(0, -1).forEach(y => {
@@ -183,7 +232,7 @@ FX_DATA.years.slice(0, -1).forEach(y => {
 });
 pYearSel.value = FX_DATA.years[0];
 
-['cur', 'pYear', 'price', 'curVal', 'rent'].forEach(id => {
+['cur', 'pYear', 'price', 'curVal', 'rent', 'fYears', 'fAppr', 'fFx', 'fScen'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', render);
   el.addEventListener('change', render);

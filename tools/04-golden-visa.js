@@ -12,6 +12,14 @@
 
 const THRESHOLD = 2000000;
 
+// estimated government fees per applicant (AED, as of 2026 — estimates only)
+const FEES = [
+  { item: 'Visa application (GDRFA)', low: 2800, high: 3000 },
+  { item: 'Medical fitness test', low: 700, high: 700 },
+  { item: 'Emirates ID, 10-year', low: 1150, high: 1150 },
+  { item: 'Typing / admin', low: 500, high: 500 },
+];
+
 const STORAGE_KEY = 'des-golden-visa';          // property list
 const CHECKLIST_KEY = 'des-golden-visa-checklist'; // checkbox states
 const BUDGET_KEY = 'des-golden-visa-budget';    // gap planner extra budget
@@ -212,6 +220,7 @@ function render() {
     verdict.className = 'verdict bad';
     verdict.textContent = 'Not yet eligible — ' + fmtAED(gap) + ' short of the AED 2,000,000 threshold.';
   }
+  document.getElementById('eligibleNote').style.display = total >= THRESHOLD ? '' : 'none';
 
   const body = document.getElementById('resultBody');
   body.innerHTML = '';
@@ -231,7 +240,28 @@ function render() {
   }
 
   renderGap(total, gap);
+  renderCost();
   saveState();
+}
+
+// ---- cost & timeline ----
+
+function renderCost() {
+  const body = document.getElementById('feeBody');
+  body.innerHTML = '';
+  let perPerson = 0;
+  for (const f of FEES) {
+    perPerson += f.high;
+    const tr = document.createElement('tr');
+    const feeText = f.low === f.high ? fmtAED(f.high) : fmtAED(f.low) + ' – ' + fmtAED(f.high);
+    tr.innerHTML = `<td></td><td class="num">${feeText}</td>`;
+    tr.firstElementChild.textContent = f.item;
+    body.appendChild(tr);
+  }
+  const n = Math.max(1, Math.round(numVal('applicants')));
+  document.getElementById('feePerPerson').textContent = fmtAED(perPerson);
+  document.getElementById('feeAllLabel').textContent = 'Total, ' + fmtNum(n) + (n === 1 ? ' applicant' : ' applicants');
+  document.getElementById('feeAll').textContent = fmtAED(perPerson * n);
 }
 
 // ---- gap planner ----
@@ -278,6 +308,7 @@ checklistBoxes.forEach(cb => cb.addEventListener('change', () => {
 // ---- wiring & init ----
 
 document.getElementById('extraBudget').addEventListener('input', render);
+document.getElementById('applicants').addEventListener('input', render);
 document.getElementById('addProperty').addEventListener('click', () => addRow());
 document.getElementById('resetAll').addEventListener('click', () => {
   try {

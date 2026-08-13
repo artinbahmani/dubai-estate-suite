@@ -100,6 +100,50 @@
   </div>
 
   <div class="card">
+    <h2>Forward scenario</h2>
+    <div class="grid grid-2">
+      <div>
+        <div class="field">
+          <label for="fYears">Years ahead</label>
+          <input type="number" id="fYears" value="3" min="1" max="30" step="1">
+        </div>
+        <div class="field">
+          <label for="fAppr">Expected AED appreciation (% p.a.)</label>
+          <input type="number" id="fAppr" value="4" step="0.5">
+        </div>
+        <div class="field">
+          <label for="fFx">Expected FX change (% p.a. vs USD)</label>
+          <input type="number" id="fFx" value="0" step="0.5">
+        </div>
+        <div class="field">
+          <label for="fScen">Scenario</label>
+          <select id="fScen">
+            <option value="base" selected>Base</option>
+            <option value="best">Best</option>
+            <option value="worst">Worst</option>
+          </select>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="k" id="kFVal">Projected value</div>
+          <div class="v" id="sFVal">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Projected total return</div>
+          <div class="v" id="sFRet">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Projected annualized</div>
+          <div class="v" id="sFAnn">—</div>
+        </div>
+      </div>
+    </div>
+    <canvas class="chart" id="chartFwd"></canvas>
+    <p class="note">Projection, not a forecast: the current AED value is grown at the appreciation rate and converted at an FX rate grown at the FX-change rate. Positive FX change means your home currency weakens against the USD-pegged dirham, which boosts the home-currency value. Best case adds +2 pp to both rates, worst case subtracts 2 pp. Rent is excluded.</p>
+  </div>
+
+  <div class="card">
     <h2>Year by year</h2>
     <table>
       <thead>

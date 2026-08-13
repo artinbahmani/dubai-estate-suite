@@ -64,12 +64,21 @@ function clearCanvas(canvas, msg) {
 }
 
 // median ppsf per month; x = index on the full month axis, months without
-// records are omitted (the x coordinate keeps the lines month-aligned)
-function medianSeries(grouped) {
+// records are omitted (the x coordinate keeps the lines month-aligned).
+// rolling: each point is the median over the trailing 3 months pooled.
+function medianSeries(grouped, rolling) {
   const pts = [];
   months.forEach((ym, i) => {
-    const list = grouped.get(ym);
-    if (list.length) pts.push([i, median(list.map(r => r.ppsf))]);
+    let vals;
+    if (rolling) {
+      vals = [];
+      for (let j = Math.max(0, i - 2); j <= i; j++) {
+        for (const r of grouped.get(months[j])) vals.push(r.ppsf);
+      }
+    } else {
+      vals = grouped.get(ym).map(r => r.ppsf);
+    }
+    if (vals.length) pts.push([i, median(vals)]);
   });
   return pts;
 }
@@ -84,15 +93,27 @@ function render() {
   document.getElementById('s-ppsf').textContent = fmtNum(median(filtered.map(r => r.ppsf)));
   document.getElementById('s-offplan').textContent = filtered.length ? fmtPct(offplanCount / filtered.length) : '—';
   document.getElementById('s-ticket').textContent = fmtAED(medTicket);
+  document.getElementById('s-value').textContent = fmtCompact(filtered.reduce((s, r) => s + r.price, 0));
 
   const grouped = groupByMonth(filtered);
 
-  // ---- (a) monthly transaction count ----
+  // ---- (a) monthly volume: count or summed value, per the metric toggle ----
+  const volMetric = strVal('f-vol-metric');
   const volCanvas = document.getElementById('c-volume');
   if (!filtered.length) {
     clearCanvas(volCanvas, 'No data for this selection');
+  } else if (volMetric === 'value') {
+    const sums = months.map(ym => grouped.get(ym).reduce((s, r) => s + r.price, 0));
+    document.getElementById('h-volume').textContent = 'Monthly transaction value';
+    drawBars(
+      volCanvas,
+      months.map(monthLabel),
+      [{ label: 'Transaction value', values: sums, color: SERIES_COLORS[0] }],
+      { yFmt: v => fmtCompact(v) }
+    );
   } else {
     const counts = months.map(ym => grouped.get(ym).length);
+    document.getElementById('h-volume').textContent = 'Monthly transaction count';
     drawBars(
       volCanvas,
       months.map(monthLabel),
@@ -101,8 +122,9 @@ function render() {
   }
 
   // ---- (b) median ppsf: selected community vs all Dubai ----
-  const selPts = medianSeries(grouped);
-  const allPts = medianSeries(groupByMonth(baseOnly));
+  const rolling = document.getElementById('f-rolling').checked;
+  const selPts = medianSeries(grouped, rolling);
+  const allPts = medianSeries(groupByMonth(baseOnly), rolling);
   const ppsfCanvas = document.getElementById('c-ppsf');
   if (!selPts.length) {
     clearCanvas(ppsfCanvas, 'No data for this selection');
@@ -278,5 +300,7 @@ function exportCsv() {
 document.getElementById('f-community').addEventListener('change', render);
 document.getElementById('f-type').addEventListener('change', render);
 document.getElementById('f-beds').addEventListener('change', render);
+document.getElementById('f-vol-metric').addEventListener('change', render);
+document.getElementById('f-rolling').addEventListener('change', render);
 document.getElementById('btn-export').addEventListener('click', exportCsv);
 render();

@@ -68,6 +68,23 @@ function addMonths(dateStr, m) {
   return target.getFullYear() + '-' + p(target.getMonth() + 1) + '-' + p(target.getDate());
 }
 
+// ---- loans ----
+
+// monthly annuity payment
+function pmt(principal, annualRate, years) {
+  const r = annualRate / 12, n = years * 12;
+  if (n <= 0) return 0;
+  if (r === 0) return principal / n;
+  return principal * r / (1 - Math.pow(1 + r, -n));
+}
+
+// remaining balance after k monthly payments
+function loanBalance(principal, annualRate, years, k) {
+  const r = annualRate / 12, n = years * 12;
+  if (r === 0) return principal * (1 - k / n);
+  return principal * Math.pow(1 + r, k) - pmt(principal, annualRate, years) * ((Math.pow(1 + r, k) - 1) / r);
+}
+
 // ---- canvas charts ----
 // palette for multi-series charts
 const SERIES_COLORS = ['#d4af37', '#58a6ff', '#3fb950', '#f85149', '#bc8cff', '#e3b341'];

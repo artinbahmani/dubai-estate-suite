@@ -11,21 +11,96 @@ const PLANS = {
 };
 const BOOKING_PCT = 0.10;
 const N = 3;
+const CUSTOM_KEY = 'des-comparator-custom';
+
+// per-project custom milestone rows: { 1: [{month, pct}, ...], ... } persisted in localStorage
+function defaultCustom() { return [{ month: 0, pct: 10 }, { month: 36, pct: 90 }]; }
+
+function loadCustom() {
+  let raw = {};
+  try { raw = JSON.parse(localStorage.getItem(CUSTOM_KEY)) || {}; } catch (e) {}
+  const out = {};
+  for (let i = 1; i <= N; i++) {
+    const rows = (Array.isArray(raw[i]) ? raw[i] : [])
+      .map(r => ({ month: Math.max(0, Math.round(+r.month) || 0), pct: Math.max(0, +r.pct) || 0 }))
+      .filter(r => r.pct > 0);
+    out[i] = rows.length ? rows : defaultCustom();
+  }
+  return out;
+}
+const customStore = loadCustom();
+
+function saveCustom() {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customStore)); } catch (e) {}
+}
+
+function customSum(i) {
+  return customStore[i].reduce((s, r) => s + r.pct, 0);
+}
+
+// rebuild the milestone rows of project i's editor from the store
+function buildEditor(i) {
+  const rowsEl = document.getElementById('p' + i + 'CustomRows');
+  rowsEl.innerHTML = '';
+  customStore[i].forEach((row, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px';
+    div.innerHTML =
+      '<input type="number" min="0" step="1" value="' + row.month + '" title="Month #" style="width:70px">' +
+      '<input type="number" min="0" step="0.5" value="' + row.pct + '" title="% of price" style="width:80px">' +
+      '<button type="button" class="btn ghost small">Remove</button>';
+    const inputs = div.querySelectorAll('input');
+    inputs[0].addEventListener('input', () => { row.month = Math.max(0, Math.round(numVal(inputs[0]))); saveCustom(); render(); });
+    inputs[1].addEventListener('input', () => { row.pct = Math.max(0, numVal(inputs[1])); saveCustom(); render(); });
+    div.querySelector('button').addEventListener('click', () => {
+      customStore[i].splice(idx, 1);
+      saveCustom(); buildEditor(i); render();
+    });
+    rowsEl.appendChild(div);
+  });
+}
+
+// show/hide each editor and refresh its running-sum indicator (called from render, so it stays live)
+function syncEditors() {
+  for (let i = 1; i <= N; i++) {
+    const isCustom = strVal('p' + i + 'Plan') === 'custom';
+    document.getElementById('p' + i + 'CustomWrap').hidden = !isCustom;
+    if (!isCustom) continue;
+    const sum = customSum(i);
+    const ok = Math.abs(sum - 100) < 1e-6;
+    const el = document.getElementById('p' + i + 'CustomSum');
+    el.style.color = ok ? '#2e7d32' : '#c62828';
+    el.textContent = 'Total: ' + fmtNum(sum, 2) + '% of price' +
+      (ok ? ' — plan complete.' : ' — must total exactly 100%; project excluded from ranking until fixed.');
+  }
+}
 
 function readProject(i) {
-  return {
+  const planKey = strVal('p' + i + 'Plan');
+  const p = {
     name: strVal('p' + i + 'Name').trim() || 'Project ' + i,
     price: Math.max(0, numVal('p' + i + 'Price')),
-    plan: PLANS[strVal('p' + i + 'Plan')],
+    plan: PLANS[planKey],
     constrMonths: Math.max(1, numVal('p' + i + 'Constr')),
     appr: Math.max(0, numVal('p' + i + 'Appr')) / 100,
   };
+  if (planKey === 'custom') {
+    p.custom = customStore[i].slice().sort((a, b) => a.month - b.month);
+    p.customSum = customSum(i);
+  }
+  return p;
 }
 
 // builds the payment schedule: [{ date, amount }] outflows, t0 = YYYY-MM-DD
 function buildSchedule(p, t0) {
-  const flows = [{ date: t0, amount: p.price * BOOKING_PCT }];
   const handoverDate = addMonths(t0, p.constrMonths);
+  // custom milestones replace the template entirely — booking is just a milestone at month 0
+  if (p.custom) {
+    const flows = p.custom.filter(r => r.pct > 0)
+      .map(r => ({ date: addMonths(t0, r.month), amount: p.price * r.pct / 100 }));
+    return { flows, handoverDate };
+  }
+  const flows = [{ date: t0, amount: p.price * BOOKING_PCT }];
   // remaining construction share spread quarterly over the build period
   const constrRest = p.price * Math.max(0, p.plan.constr - BOOKING_PCT);
   const nQ = Math.max(1, Math.floor(p.constrMonths / 3));
@@ -59,9 +134,13 @@ function analyze(p, t0, discRate, sellCost) {
   const irrFlows = flows.filter(f => f.date <= handoverDate).map(f => ({ date: f.date, amount: -f.amount }));
   irrFlows.push({ date: handoverDate, amount: salePrice * (1 - sellCost) - unpaid });
   const irr = xirr(irrFlows);
-  const endMonths = p.constrMonths + (p.plan.postMonths || 0);
+  const endMonths = p.custom
+    ? Math.max(p.constrMonths, ...p.custom.map(r => r.month))
+    : p.constrMonths + (p.plan.postMonths || 0);
+  // a custom plan only ranks when its milestones sum to exactly 100% of price
+  const planOk = !p.custom || Math.abs(p.customSum - 100) < 1e-6;
 
-  return { name: p.name, price: p.price, flows, endMonths, nominal, npvCost, irr, cash12, salePrice, paidByHandover };
+  return { name: p.name, price: p.price, flows, endMonths, nominal, npvCost, irr, cash12, salePrice, paidByHandover, customSum: p.custom ? p.customSum : null, planOk };
 }
 
 // months between two YYYY-MM-DD dates (fractional)
@@ -85,14 +164,15 @@ function breakEvenRate(flows, cashTarget) {
 }
 
 function render() {
+  syncEditors();
   const t0 = new Date().toISOString().slice(0, 10);
   const discRate = Math.min(30, Math.max(0, numVal('discRate'))) / 100;
   const sellCost = Math.max(0, numVal('sellCost')) / 100;
   const results = [];
   for (let i = 1; i <= N; i++) results.push(analyze(readProject(i), t0, discRate, sellCost));
 
-  // zero-price projects carry no signal — exclude from ranking and verdicts
-  const valid = results.filter(r => r.price > 0);
+  // zero-price projects and custom plans that don't total 100% carry no signal — exclude from ranking
+  const valid = results.filter(r => r.price > 0 && r.planOk);
   const byNpv = [...valid].sort((a, b) => a.npvCost - b.npvCost);
   // NaN IRR (no bracketed root) always ranks last
   const byIrr = [...valid].sort((a, b) => (isNaN(b.irr) ? -Infinity : b.irr) - (isNaN(a.irr) ? -Infinity : a.irr));
@@ -103,7 +183,7 @@ function render() {
   const verdictCashEl = document.getElementById('verdictCash');
 
   if (!winNpv) {
-    verdictNpvEl.textContent = 'Enter a price for at least one project to see a ranking.';
+    verdictNpvEl.textContent = 'Enter a price and a valid plan for at least one project to see a ranking.';
     verdictIrrEl.textContent = '';
   } else {
     let npvText = 'Cheapest in real terms: ' + winNpv.name + ' — NPV of payments ' + fmtAED(winNpv.npvCost);
@@ -150,7 +230,11 @@ function render() {
   const show = fn => r => r.price > 0 ? fn(r) : '—';
   const dispRows = rows.map(([label, fn]) => [label, show(fn)]);
   if (valid.length < results.length) {
-    dispRows.unshift(['Status', r => r.price > 0 ? 'ranked' : 'no price — excluded from ranking']);
+    dispRows.unshift(['Status', r => {
+      if (r.price <= 0) return 'no price — excluded from ranking';
+      if (!r.planOk) return 'custom plan totals ' + fmtNum(r.customSum, 2) + '% (must be 100%) — excluded from ranking';
+      return 'ranked';
+    }]);
   }
   document.getElementById('cmpBody').innerHTML = dispRows.map(([label, fn]) =>
     '<tr><td>' + label + '</td>' + results.map(r => '<td class="num">' + fn(r) + '</td>').join('') + '</tr>'
@@ -228,6 +312,20 @@ document.getElementById('samePrice').addEventListener('click', () => {
   render();
 });
 document.getElementById('exportCsv').addEventListener('click', exportCsv);
+
+// custom milestone editors: build rows once, wire add/sort per project
+for (let i = 1; i <= N; i++) {
+  buildEditor(i);
+  document.getElementById('p' + i + 'CustomAdd').addEventListener('click', () => {
+    const rows = customStore[i];
+    rows.push({ month: rows.length ? rows[rows.length - 1].month + 6 : 0, pct: 0 });
+    saveCustom(); buildEditor(i); render();
+  });
+  document.getElementById('p' + i + 'CustomSort').addEventListener('click', () => {
+    customStore[i].sort((a, b) => a.month - b.month);
+    saveCustom(); buildEditor(i); render();
+  });
+}
 
 document.querySelectorAll('input, select').forEach(el => {
   el.addEventListener('input', render);

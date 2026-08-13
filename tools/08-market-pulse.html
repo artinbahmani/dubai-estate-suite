@@ -51,6 +51,7 @@
       <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="s-ppsf">—</div></div>
       <div class="stat"><div class="k">Off-plan share</div><div class="v" id="s-offplan">—</div></div>
       <div class="stat"><div class="k">Median ticket</div><div class="v" id="s-ticket">—</div></div>
+      <div class="stat"><div class="k">Total value</div><div class="v" id="s-value">—</div></div>
     </div>
     <p class="note" id="data-through"></p>
     <div class="no-print" style="margin-top:12px;display:flex;gap:8px">
@@ -60,13 +61,22 @@
   </div>
 
   <div class="card">
-    <h2>Monthly transaction count</h2>
+    <h2 id="h-volume">Monthly transaction count</h2>
+    <div class="field no-print" style="max-width:240px;margin-bottom:8px">
+      <select id="f-vol-metric">
+        <option value="count">Transactions count</option>
+        <option value="value">Transaction value AED</option>
+      </select>
+    </div>
     <canvas id="c-volume" class="chart"></canvas>
   </div>
 
   <div class="grid grid-2">
     <div class="card">
       <h2>Median AED / sqft by month</h2>
+      <div class="no-print" style="margin-bottom:8px">
+        <label><input type="checkbox" id="f-rolling" checked> Rolling 90-day</label>
+      </div>
       <canvas id="c-ppsf" class="chart"></canvas>
     </div>
     <div class="card">

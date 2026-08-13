@@ -35,6 +35,14 @@
         <input type="number" id="inMonths" value="18" min="1" step="1">
       </div>
       <div class="field">
+        <label for="inRhythm">Payment rhythm</label>
+        <select id="inRhythm">
+          <option value="staged" selected>Evenly staged (construction-linked)</option>
+          <option value="upfront">All upfront</option>
+        </select>
+        <p class="note">Staged spreads your paid-to-date cash as equal quarterly installments from month 0 to months held.</p>
+      </div>
+      <div class="field">
         <label for="inResale">Expected resale price (AED)</label>
         <input type="number" id="inResale" value="1800000" min="0" step="10000">
       </div>
@@ -88,8 +96,10 @@
         <div class="stat"><div class="k">Profit</div><div class="v" id="oProfit">—</div></div>
         <div class="stat"><div class="k">ROI on cash invested</div><div class="v" id="oRoi">—</div></div>
         <div class="stat"><div class="k">Annualized ROI</div><div class="v" id="oAnnRoi">—</div></div>
+        <div class="stat"><div class="k">XIRR (staged payments)</div><div class="v" id="oXirr">—</div></div>
         <div class="stat"><div class="k">Break-even resale price</div><div class="v" id="oBreakeven">—</div></div>
       </div>
+      <p class="note">XIRR credits cash as it is paid in over time — the number investors quote. Annualized ROI assumes every dirham was deployed on day one.</p>
       <div class="verdict warn" id="oVerdict">—</div>
       <div class="verdict bad" id="oDevWarn" style="display:none;margin-top:8px;"></div>
       <button class="btn ghost small no-print" onclick="window.print()" style="margin-top:12px;">Print / PDF</button>

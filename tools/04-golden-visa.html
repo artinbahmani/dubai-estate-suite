@@ -44,6 +44,19 @@
   .checklist li { margin: 8px 0; }
   .checklist input { margin-right: 8px; accent-color: var(--gold); }
   .checklist li.done label { color: var(--muted); text-decoration: line-through; }
+  /* tool-specific: timeline strip */
+  .tline { display: flex; gap: 8px; margin: 14px 0 6px; }
+  .tstep {
+    flex: 1;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tstep b { display: block; color: var(--text); margin-bottom: 2px; }
+  .tstep .n { color: var(--gold); margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -73,6 +86,7 @@
     <div class="pbar"><div class="pbar-fill" id="barFill"></div></div>
     <div class="pbar-label" id="barLabel"></div>
     <div class="verdict bad" id="verdict"></div>
+    <p class="note" id="eligibleNote" style="display:none">What eligibility buys: sponsor spouse, children of any age, and parents; 10-year renewable residency; no sponsor needed.</p>
 
     <h2 style="margin-top:24px">Per-property breakdown</h2>
     <table>
@@ -99,6 +113,43 @@
       <input type="number" id="extraBudget" min="0" step="10000" value="0">
     </div>
     <div class="verdict warn" id="gapVerdict"></div>
+  </div>
+
+  <div class="card">
+    <h2>Cost &amp; timeline</h2>
+    <div class="field" style="max-width:320px">
+      <label>Number of applicants</label>
+      <input type="number" id="applicants" min="1" step="1" value="1">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Item (per applicant)</th>
+          <th class="num">Estimated fee</th>
+        </tr>
+      </thead>
+      <tbody id="feeBody"></tbody>
+      <tfoot>
+        <tr>
+          <td><b>Total per person</b></td>
+          <td class="num"><b id="feePerPerson">—</b></td>
+        </tr>
+        <tr>
+          <td><b id="feeAllLabel">Total, 1 applicant</b></td>
+          <td class="num"><b id="feeAll">—</b></td>
+        </tr>
+      </tfoot>
+    </table>
+    <p class="note"><span class="badge ok">as of 2026</span> Estimates only — government fees change; confirm with GDRFA/ICP or your typing centre before quoting a client.</p>
+
+    <h2 style="margin-top:24px">Typical timeline</h2>
+    <div class="tline">
+      <div class="tstep"><b><span class="n">1</span>Eligibility check</b>Title deed / Oqood + threshold confirmed</div>
+      <div class="tstep"><b><span class="n">2</span>Medical fitness</b>Same-day at a DHA centre</div>
+      <div class="tstep"><b><span class="n">3</span>Biometrics</b>Emirates ID fingerprinting</div>
+      <div class="tstep"><b><span class="n">4</span>Stamping</b>10-year visa issued</div>
+    </div>
+    <p class="note">Around 7–10 business days end-to-end via the GDRFA digital channel, assuming documents are complete.</p>
   </div>
 
   <div class="card">

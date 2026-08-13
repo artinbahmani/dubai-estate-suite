@@ -70,10 +70,24 @@
     <div class="stats">
       <div class="stat"><div class="k">Comps found</div><div class="v" id="sComps">—</div></div>
       <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="sMedian">—</div></div>
+      <div class="stat" id="statReadyMed" style="display:none;"><div class="k">Ready median AED / sqft</div><div class="v" id="sReadyMed">—</div></div>
+      <div class="stat" id="statOffplanMed" style="display:none;"><div class="k">Off-plan median AED / sqft</div><div class="v" id="sOffplanMed">—</div></div>
       <div class="stat"><div class="k">Estimated value</div><div class="v" id="sValue">—</div></div>
       <div class="stat"><div class="k">Value range (25th–75th)</div><div class="v" id="sRange">—</div></div>
       <div class="stat"><div class="k">Indicative gross yield</div><div class="v" id="sYield">—</div></div>
+      <div class="stat"><div class="k">Indicative net yield</div><div class="v" id="sNetYield">—</div></div>
     </div>
+    <div class="grid grid-2" style="margin-top:12px;">
+      <div class="field">
+        <label for="serviceCharge">Service charge (AED / sqft / yr)</label>
+        <input id="serviceCharge" type="number" min="0" step="1" value="15">
+      </div>
+      <div class="field">
+        <label for="vacancy">Vacancy (%)</label>
+        <input id="vacancy" type="number" min="0" max="100" step="1" value="5">
+      </div>
+    </div>
+    <div class="note">Net yield = index rent × (1 − vacancy) − service charges, over the estimated value.</div>
     <div class="note" id="fallbackNote"></div>
     <div class="verdict ok" id="confidence"></div>
     <div style="margin-top:12px;">

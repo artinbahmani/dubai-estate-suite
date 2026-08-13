@@ -35,6 +35,18 @@ function dealsPerQuarter() {
   return numVal({ offplan: 'op-deals', resale: 'rs-deals', rental: 'rn-deals' }[active]);
 }
 
+// ---- off-plan tranches ----
+
+function tranchesOn() {
+  return active === 'offplan' && $('op-tranches').checked;
+}
+
+// month the milestone tranche releases, on a standard 60/40 plan:
+// 60% of the price paid evenly over 24 months of construction, 40% at handover
+function trancheMonth(msPct) {
+  return msPct <= 60 ? Math.round(24 * msPct / 60) : 24;
+}
+
 // ---- goal mode ----
 
 function renderGoal(agentPerDeal, dpq) {
@@ -147,6 +159,20 @@ function render() {
   const dpq = dealsPerQuarter();
   const quarterly = agent * dpq;
 
+  // tranches: Q1 books only the SPA tranche; the rest releases at the buyer milestone
+  const tOn = tranchesOn();
+  const spaPct = tOn ? Math.min(100, Math.max(0, numVal('op-spa-pct'))) : 100;
+  const msPct = tOn ? Math.min(100, Math.max(0, numVal('op-ms-pct'))) : 0;
+  $('op-tranche-opts').hidden = !tOn;
+  $('op-tranche-out').hidden = !tOn;
+  if (tOn) {
+    const msMonth = trancheMonth(msPct);
+    $('op-t-spa').textContent = fmtAED(gross * spaPct / 100);
+    $('op-t-ms').textContent = fmtAED(gross * (100 - spaPct) / 100);
+    $('op-t-ms-when').textContent = '(~month ' + msMonth + ')';
+    $('op-t-month').textContent = msMonth;
+  }
+
   const rebateWipesShare = active === 'offplan' && gross > 0 && rebatePct >= splitPct;
   const rebateWarn = $('op-rebate-warn');
   rebateWarn.hidden = !rebateWipesShare;
@@ -168,15 +194,19 @@ function render() {
     { label: 'Brokerage keeps', values: [broker], color: '#58a6ff' },
   ], { yFmt: fmtCompact });
 
+  const q1 = quarterly * spaPct / 100;
   const cum = [];
-  for (let q = 1; q <= 4; q++) cum.push([q - 1, quarterly * q]);
+  for (let q = 1; q <= 4; q++) cum.push([q - 1, q1 + quarterly * (q - 1)]);
   drawLine($('chart-proj'), [
     { label: 'Cumulative agent income', color: '#d4af37', points: cum },
   ], { xLabels: ['Q1', 'Q2', 'Q3', 'Q4'], yFmt: fmtCompact });
 
   const flow = fmtNum(dpq) + ' deal' + (dpq === 1 ? '' : 's') + ' per quarter';
   $('proj-note').textContent = 'At ' + flow + ': ' + fmtAED(quarterly) +
-    ' per quarter, ' + fmtAED(quarterly * 4) + ' per year in agent take-home (excl. VAT).';
+    ' per quarter, ' + fmtAED(quarterly * 4) + ' per year in agent take-home (excl. VAT).' +
+    (tOn ? ' Tranches on: Q1 books only the ' + fmtNum(spaPct) + '% SPA tranche (' +
+      fmtAED(q1) + '); the rest releases when buyers reach ' + fmtNum(msPct) +
+      '% of the price paid (~month ' + trancheMonth(msPct) + ').' : '');
 
   renderGoal(agent, dpq);
   renderPipeline(splitPct);
@@ -191,7 +221,7 @@ function setTab(name) {
   render();
 }
 
-['op-price', 'op-comm', 'op-rebate', 'op-deals', 'rs-price', 'rs-fee', 'rs-dual', 'rs-deals', 'rn-rent', 'rn-deals', 'split', 'goal-target'].forEach(watch);
+['op-price', 'op-comm', 'op-rebate', 'op-deals', 'op-tranches', 'op-spa-pct', 'op-ms-pct', 'rs-price', 'rs-fee', 'rs-dual', 'rs-deals', 'rn-rent', 'rn-deals', 'split', 'goal-target'].forEach(watch);
 $('tab-offplan').addEventListener('click', () => setTab('offplan'));
 $('tab-resale').addEventListener('click', () => setTab('resale'));
 $('tab-rental').addEventListener('click', () => setTab('rental'));

@@ -95,10 +95,34 @@ function render() {
   document.getElementById('statByHandover').textContent = fmtAED(paidByHandover);
   document.getElementById('statMonths').textContent = last ? last.month + ' mo' : '—';
 
+  // finance the handover: loan = LTV% of the expected handover value, covering
+  // everything due at/after handover (incl. post-handover installments)
+  const finOn = document.getElementById('finToggle').checked;
+  if (finOn) {
+    const ltv = Math.min(Math.max(0, numVal('finLtv')), 50) / 100;
+    const finRate = Math.max(0, numVal('finRate')) / 100;
+    const finYears = Math.max(1, numVal('finYears'));
+    const handoverDue = rows.filter(r => r.month >= constrMonths).reduce((s, r) => s + r.amount, 0);
+    const loan = ltv * Math.max(0, numVal('handoverValue'));
+    const monthly = pmt(loan, finRate, finYears);
+    document.getElementById('finLoan').textContent = fmtAED(loan);
+    document.getElementById('finMonthly').textContent = fmtAED(monthly) + ' /mo';
+    document.getElementById('finCash').textContent = fmtAED(Math.max(0, handoverDue - loan));
+    document.getElementById('finInterest').textContent = fmtAED(monthly * finYears * 12 - loan);
+    // flag the covered portion of each at/after-handover row, disbursed in date order
+    let finLeft = Math.min(loan, handoverDue);
+    for (const r of rows) {
+      if (r.month >= constrMonths && finLeft > 0) {
+        r.financed = Math.min(r.amount, finLeft);
+        finLeft -= r.financed;
+      }
+    }
+  }
+
   // table
   const totPct = rows.reduce((s, r) => s + r.pct, 0);
   document.getElementById('planBody').innerHTML = rows.map(r =>
-    '<tr><td>' + r.date + '</td><td>' + r.label + '</td>' +
+    '<tr><td>' + r.date + '</td><td>' + r.label + (r.financed ? ' <span class="badge">financed ' + fmtAED(r.financed) + '</span>' : '') + '</td>' +
     '<td class="num">' + fmtPct(r.pct / 100, 2) + '</td>' +
     '<td class="num">' + fmtAED(r.amount) + '</td>' +
     '<td class="num">' + fmtAED(r.cum) + '</td></tr>'
@@ -193,7 +217,7 @@ function init() {
   document.getElementById('price').addEventListener('input', syncHv);
   document.getElementById('price').addEventListener('change', syncHv);
 
-  const ids = ['price', 'bookingPct', 'constrMonths', 'milestoneFreq', 'planTemplate', 'customShare', 'phToggle', 'phMonths', 'handoverValue', 'discRate', 'cashDisc'];
+  const ids = ['price', 'bookingPct', 'constrMonths', 'milestoneFreq', 'planTemplate', 'customShare', 'phToggle', 'phMonths', 'handoverValue', 'discRate', 'cashDisc', 'finToggle', 'finLtv', 'finRate', 'finYears'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', render);
@@ -208,6 +232,9 @@ function init() {
   });
   document.getElementById('phToggle').addEventListener('change', () => {
     document.getElementById('phMonthsRow').hidden = !document.getElementById('phToggle').checked;
+  });
+  document.getElementById('finToggle').addEventListener('change', () => {
+    document.getElementById('finBody').hidden = !document.getElementById('finToggle').checked;
   });
   document.getElementById('exportCsv').addEventListener('click', exportCsv);
 

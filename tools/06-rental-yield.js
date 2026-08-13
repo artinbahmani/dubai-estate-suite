@@ -117,8 +117,36 @@ function render() {
   document.getElementById('sTotalRet').textContent = price > 0 ? fmtPct(totalRet / price) : '—';
   setSign('sTotalRet', totalRet);
 
-  drawBars(document.getElementById('projChart'), labels,
-    [{ label: 'Net income / yr', values: nets, color: SERIES_COLORS[2] }],
+  // levered layer: post-debt cash flow, exit equity, 5-yr IRR (financing only)
+  const projSets = [{ label: 'Net income / yr', values: nets, color: SERIES_COLORS[2] }];
+  let levIrr = NaN, equityExit = NaN, cf1 = NaN;
+  if (mortgaged) {
+    const loan = price * Math.min(80, numVal('ltv')) / 100;
+    const rateDec = numVal('rate') / 100;
+    const ds = pmt(loan, rateDec, numVal('years')) * 12; // annual debt service
+    const cf = nets.map(n => n - ds);
+    const bal5 = Math.max(0, loanBalance(loan, rateDec, numVal('years'), 60));
+    equityExit = value5 - bal5;
+    cf1 = cf[0];
+    const cashInvested = price - loan + price * numVal('acqPct') / 100;
+    const t0 = '2026-01-01';
+    const flows = [{ date: t0, amount: -cashInvested }];
+    for (let y = 0; y < 5; y++) {
+      // year 5 adds net sale proceeds: value - remaining balance - 2% selling costs
+      const amt = y === 4 ? cf[y] + value5 - bal5 - value5 * 0.02 : cf[y];
+      flows.push({ date: addMonths(t0, 12 * (y + 1)), amount: amt });
+    }
+    levIrr = xirr(flows);
+    projSets.push({ label: 'Post-debt cash flow / yr', values: cf, color: SERIES_COLORS[1] });
+  }
+  document.getElementById('sLevIRR').textContent = isFinite(levIrr) ? fmtPct(levIrr) : '—';
+  if (isFinite(levIrr)) setSign('sLevIRR', levIrr);
+  document.getElementById('sEquityExit').textContent = isFinite(equityExit) ? fmtAED(equityExit) : '—';
+  if (isFinite(equityExit)) setSign('sEquityExit', equityExit);
+  document.getElementById('sCF1').textContent = isFinite(cf1) ? fmtAED(cf1) : '—';
+  if (isFinite(cf1)) setSign('sCF1', cf1);
+
+  drawBars(document.getElementById('projChart'), labels, projSets,
     { yFmt: v => fmtCompact(v) });
 
   // RERA check

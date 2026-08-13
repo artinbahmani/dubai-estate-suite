@@ -45,6 +45,26 @@
           <label for="op-deals">Deals per quarter</label>
           <input type="number" id="op-deals" value="2" min="0" step="1">
         </div>
+        <div class="field">
+          <label><input type="checkbox" id="op-tranches" style="width:auto; margin-right:8px;">Commission paid in tranches</label>
+        </div>
+        <div id="op-tranche-opts" hidden>
+          <div class="field">
+            <label for="op-spa-pct">% at SPA signing</label>
+            <input type="number" id="op-spa-pct" value="50" min="0" max="100" step="5">
+          </div>
+          <div class="field">
+            <label for="op-ms-pct">Rest at buyer payment milestone (% of price paid)</label>
+            <input type="number" id="op-ms-pct" value="40" min="0" max="100" step="5">
+          </div>
+        </div>
+        <div id="op-tranche-out" hidden>
+          <div class="stats">
+            <div class="stat"><div class="k">At SPA signing (~month 0)</div><div class="v" id="op-t-spa">—</div></div>
+            <div class="stat"><div class="k">At buyer milestone <span class="range-val" id="op-t-ms-when"></span></div><div class="v" id="op-t-ms">—</div></div>
+          </div>
+          <p class="note">Milestone month assumes a standard 60/40 payment plan: 60% of the price is paid evenly over a 24-month construction period and 40% at handover, so the milestone lands at ~month <span id="op-t-month"></span>. Amounts are gross commission; the same percentages apply pro-rata to agent take-home in the income projection.</p>
+        </div>
         <p class="note">Buyer pays 0% — the developer pays the brokerage 2–10% of the unit price; bulk or incentive launches can pay above 7%. Any rebate to the buyer comes out of the agent's take-home, after the split — VAT stays on the full gross. Off-plan is typically 2–3x more profitable per deal than resale.</p>
       </div>
 

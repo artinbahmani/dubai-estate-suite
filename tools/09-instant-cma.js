@@ -105,24 +105,48 @@ function render() {
   const p25 = percentile(ppsfs, 0.25);
   const p50 = percentile(ppsfs, 0.5);
   const p75 = percentile(ppsfs, 0.75);
-  const est = p50 * sqft;
+
+  // ready vs off-plan split medians on the same trend-adjusted comp set.
+  // when off-plan comps are included, the point estimate switches to the
+  // ready median — launch pricing distorts the blended median
+  const readyPpsfs = comps.filter(r => !r.offplan).map(r => r.ppsf * factorOf(r)).sort((a, b) => a - b);
+  const offplanPpsfs = comps.filter(r => r.offplan).map(r => r.ppsf * factorOf(r)).sort((a, b) => a - b);
+  let estPpsf = p50;
+  if (inclOffplan && readyPpsfs.length >= MIN_POINT) {
+    estPpsf = percentile(readyPpsfs, 0.5);
+    fullNote += ' Off-plan comps included: the estimate is based on the ready-comps median by default (off-plan launch pricing excluded).';
+  }
+  const est = estPpsf * sqft;
   const enough = comps.length >= MIN_POINT;
 
   // indicative gross yield from the rent index at the estimated value
   // (apartments only — the index is apartment-level)
   const rentIdx = RENT_INDEX_DATA.index[community];
   const rent = type === 'apartment' && rentIdx && rentIdx[beds] !== undefined ? rentIdx[beds] : null;
-  if (type !== 'apartment') fullNote += ' Gross yield is shown for apartments only — the rent index is apartment-level.';
-  else if (rent === null) fullNote += ' No index rent for this configuration — gross yield unavailable.';
+  if (type !== 'apartment') fullNote += ' Gross and net yields are shown for apartments only — the rent index is apartment-level.';
+  else if (rent === null) fullNote += ' No index rent for this configuration — gross and net yields unavailable.';
+
+  // net yield: index rent net of vacancy and service charges, over the estimate
+  const vacancy = Math.min(Math.max(numVal('vacancy') / 100, 0), 1);
+  const serviceCharge = Math.max(numVal('serviceCharge'), 0);
+  const netAnnual = rent !== null ? rent * (1 - vacancy) - sqft * serviceCharge : null;
 
   // stat cards
   document.getElementById('sComps').textContent = String(comps.length);
   document.getElementById('sMedian').textContent = enough ? fmtNum(p50) : '—';
+  document.getElementById('statReadyMed').style.display = inclOffplan ? '' : 'none';
+  document.getElementById('statOffplanMed').style.display = inclOffplan ? '' : 'none';
+  document.getElementById('sReadyMed').textContent = readyPpsfs.length >= MIN_POINT ? fmtNum(percentile(readyPpsfs, 0.5)) : '—';
+  document.getElementById('sOffplanMed').textContent = offplanPpsfs.length >= MIN_POINT ? fmtNum(percentile(offplanPpsfs, 0.5)) : '—';
   document.getElementById('sValue').textContent = enough && sqftOk ? fmtAED(est) : '—';
   document.getElementById('sRange').textContent = comps.length && sqftOk ? fmtAED(p25 * sqft) + ' – ' + fmtAED(p75 * sqft) : '—';
   document.getElementById('sYield').textContent =
     enough && sqftOk && rent && est > 0
       ? fmtPct(rent / est) + ' (' + fmtCompact(rent) + '/yr index rent)'
+      : '—';
+  document.getElementById('sNetYield').textContent =
+    enough && sqftOk && rent && est > 0
+      ? fmtPct(netAnnual / est) + ' (' + fmtCompact(netAnnual) + '/yr net)'
       : '—';
   document.getElementById('fallbackNote').textContent = fullNote;
 
@@ -230,7 +254,7 @@ function exportCsv() {
   const sel = document.getElementById('community');
   sel.innerHTML = communities.map(c => '<option value="' + c + '">' + c + '</option>').join('');
 
-  ['community', 'ptype', 'beds', 'sqft', 'trendOn', 'offplanOn'].forEach(id => {
+  ['community', 'ptype', 'beds', 'sqft', 'trendOn', 'offplanOn', 'serviceCharge', 'vacancy'].forEach(id => {
     document.getElementById(id).addEventListener('input', render);
     document.getElementById(id).addEventListener('change', render);
   });
