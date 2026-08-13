@@ -15,10 +15,10 @@ const N = 3;
 function readProject(i) {
   return {
     name: strVal('p' + i + 'Name').trim() || 'Project ' + i,
-    price: numVal('p' + i + 'Price'),
+    price: Math.max(0, numVal('p' + i + 'Price')),
     plan: PLANS[strVal('p' + i + 'Plan')],
     constrMonths: Math.max(1, numVal('p' + i + 'Constr')),
-    appr: numVal('p' + i + 'Appr') / 100,
+    appr: Math.max(0, numVal('p' + i + 'Appr')) / 100,
   };
 }
 
@@ -31,7 +31,7 @@ function buildSchedule(p, t0) {
   const nQ = Math.max(1, Math.floor(p.constrMonths / 3));
   if (constrRest > 0) {
     for (let k = 1; k <= nQ; k++) {
-      flows.push({ date: addMonths(t0, Math.min(3 * k, p.constrMonths)), amount: constrRest / nQ });
+      flows.push({ date: addMonths(t0, 3 * k), amount: constrRest / nQ });
     }
   }
   if (p.plan.handover > 0) flows.push({ date: handoverDate, amount: p.price * p.plan.handover });
@@ -44,19 +44,20 @@ function buildSchedule(p, t0) {
   return { flows, handoverDate };
 }
 
-function analyze(p, t0, discRate) {
+function analyze(p, t0, discRate, sellCost) {
   const { flows, handoverDate } = buildSchedule(p, t0);
   const nominal = flows.reduce((s, f) => s + f.amount, 0);
   const npvCost = -xnpv(discRate, flows.map(f => ({ date: f.date, amount: -f.amount })));
   const cutoff = addMonths(t0, 12);
   const cash12 = flows.filter(f => f.date <= cutoff).reduce((s, f) => s + f.amount, 0);
 
-  // flip at handover: sale price less any balance not yet paid (post-handover share)
+  // flip at handover: sale price less selling costs and any balance not yet paid
+  // (unpaid post-handover share is netted at face value, no discounting)
   const paidByHandover = flows.filter(f => f.date <= handoverDate).reduce((s, f) => s + f.amount, 0);
   const unpaid = p.price - paidByHandover;
   const salePrice = p.price * (1 + p.appr);
   const irrFlows = flows.filter(f => f.date <= handoverDate).map(f => ({ date: f.date, amount: -f.amount }));
-  irrFlows.push({ date: handoverDate, amount: salePrice - unpaid });
+  irrFlows.push({ date: handoverDate, amount: salePrice * (1 - sellCost) - unpaid });
   const irr = xirr(irrFlows);
   const endMonths = p.constrMonths + (p.plan.postMonths || 0);
 
@@ -65,7 +66,7 @@ function analyze(p, t0, discRate) {
 
 // months between two YYYY-MM-DD dates (fractional)
 function monthsBetween(t0, dateStr) {
-  return (new Date(dateStr).getTime() - new Date(t0).getTime()) / (365.25 * 86400000 / 12);
+  return (new Date(dateStr).getTime() - new Date(t0).getTime()) / (365 * 86400000 / 12);
 }
 
 // break-even discount rate d where NPV cost of the schedule equals the discounted cash price
@@ -85,29 +86,54 @@ function breakEvenRate(flows, cashTarget) {
 
 function render() {
   const t0 = new Date().toISOString().slice(0, 10);
-  const discRate = numVal('discRate') / 100;
+  const discRate = Math.min(30, Math.max(0, numVal('discRate'))) / 100;
+  const sellCost = Math.max(0, numVal('sellCost')) / 100;
   const results = [];
-  for (let i = 1; i <= N; i++) results.push(analyze(readProject(i), t0, discRate));
+  for (let i = 1; i <= N; i++) results.push(analyze(readProject(i), t0, discRate, sellCost));
 
-  const byNpv = [...results].sort((a, b) => a.npvCost - b.npvCost);
-  const byIrr = [...results].sort((a, b) => (isNaN(b.irr) ? -1 : b.irr) - (isNaN(a.irr) ? -1 : a.irr));
+  // zero-price projects carry no signal — exclude from ranking and verdicts
+  const valid = results.filter(r => r.price > 0);
+  const byNpv = [...valid].sort((a, b) => a.npvCost - b.npvCost);
+  // NaN IRR (no bracketed root) always ranks last
+  const byIrr = [...valid].sort((a, b) => (isNaN(b.irr) ? -Infinity : b.irr) - (isNaN(a.irr) ? -Infinity : a.irr));
   const winNpv = byNpv[0], winIrr = byIrr[0];
 
-  document.getElementById('verdictNpv').textContent =
-    'Cheapest in real terms: ' + winNpv.name + ' — NPV of payments ' + fmtAED(winNpv.npvCost) +
-    ' vs ' + fmtAED(byNpv[1].npvCost) + ' for ' + byNpv[1].name + '.';
-  document.getElementById('verdictIrr').textContent =
-    'Best flip return: ' + winIrr.name + ' — IRR ' + fmtPct(winIrr.irr) +
-    ' if sold at handover. IRR and NPV can pick different winners: NPV measures absolute cost of money at the discount rate, while IRR measures return on cash actually deployed — a back-loaded plan deploys less cash early, so it can show a higher IRR even on a pricier unit.';
+  const verdictNpvEl = document.getElementById('verdictNpv');
+  const verdictIrrEl = document.getElementById('verdictIrr');
+  const verdictCashEl = document.getElementById('verdictCash');
+
+  if (!winNpv) {
+    verdictNpvEl.textContent = 'Enter a price for at least one project to see a ranking.';
+    verdictIrrEl.textContent = '';
+  } else {
+    let npvText = 'Cheapest in real terms: ' + winNpv.name + ' — NPV of payments ' + fmtAED(winNpv.npvCost);
+    if (byNpv.length > 1) {
+      const worstNpv = byNpv[byNpv.length - 1];
+      npvText += ' vs ' + fmtAED(byNpv[1].npvCost) + ' for ' + byNpv[1].name + '.' +
+        ' ' + fmtAED(worstNpv.npvCost - winNpv.npvCost) + ' real-money difference between best and worst.';
+    } else {
+      npvText += '.';
+    }
+    verdictNpvEl.textContent = npvText;
+    verdictIrrEl.textContent =
+      'Best flip return: ' + winIrr.name + ' — IRR ' + fmtPct(winIrr.irr) +
+      ' if sold at handover. IRR and NPV can pick different winners: NPV measures absolute cost of money at the discount rate, while IRR measures return on cash actually deployed — a back-loaded plan deploys less cash early, so it can show a higher IRR even on a pricier unit.';
+  }
 
   // break-even cash discount: rate where the NPV winner's payment plan costs the same as paying cash
-  const cashDisc = numVal('cashDisc') / 100;
-  const cashTarget = winNpv.price * (1 - cashDisc);
-  const be = cashDisc > 0 && cashDisc < 1 ? breakEvenRate(winNpv.flows, cashTarget) : NaN;
-  document.getElementById('verdictCash').textContent = isNaN(be)
-    ? 'Break-even discount: no rate in 0–10000% makes ' + winNpv.name + ' as cheap as cash at ' + fmtPct(cashDisc, 2) + ' off — check the discount input.'
-    : 'Break-even discount rate: ' + fmtPct(be, 2) + ' — if your client\'s money costs less than this, ' + winNpv.name +
-      ' beats paying ' + fmtAED(cashTarget) + ' cash (' + fmtPct(cashDisc, 2) + ' off). Above it, take the cash discount.';
+  // hidden entirely when the discount input is 0 or 100%+ (no meaningful comparison)
+  const cashDisc = Math.max(0, numVal('cashDisc'));
+  if (!winNpv || cashDisc <= 0 || cashDisc >= 100) {
+    verdictCashEl.style.display = 'none';
+  } else {
+    verdictCashEl.style.display = '';
+    const cashTarget = winNpv.price * (1 - cashDisc / 100);
+    const be = breakEvenRate(winNpv.flows, cashTarget);
+    verdictCashEl.textContent = isNaN(be)
+      ? 'Break-even discount: no rate in 0–10000% makes ' + winNpv.name + ' as cheap as cash at ' + fmtPct(cashDisc / 100, 2) + ' off.'
+      : 'Break-even discount rate: ' + fmtPct(be, 2) + ' — if your client\'s money costs less than this, ' + winNpv.name +
+        ' beats paying ' + fmtAED(cashTarget) + ' cash (' + fmtPct(cashDisc / 100, 2) + ' off). Above it, take the cash discount.';
+  }
 
   // comparison table: rows = metrics, columns = projects
   document.getElementById('cmpHead').innerHTML =
@@ -120,10 +146,27 @@ function render() {
     ['Cash needed in first 12 months', r => fmtAED(r.cash12)],
     ['Paid by handover', r => fmtAED(r.paidByHandover)],
   ];
-  document.getElementById('cmpBody').innerHTML = rows.map(([label, fn]) =>
+  // zero-price projects get an empty state, not a row of zeros
+  const show = fn => r => r.price > 0 ? fn(r) : '—';
+  const dispRows = rows.map(([label, fn]) => [label, show(fn)]);
+  if (valid.length < results.length) {
+    dispRows.unshift(['Status', r => r.price > 0 ? 'ranked' : 'no price — excluded from ranking']);
+  }
+  document.getElementById('cmpBody').innerHTML = dispRows.map(([label, fn]) =>
     '<tr><td>' + label + '</td>' + results.map(r => '<td class="num">' + fn(r) + '</td>').join('') + '</tr>'
   ).join('');
-  lastTable = { names: results.map(r => r.name), rows: rows.map(([label, fn]) => [label, ...results.map(r => String(fn(r)))]) };
+
+  // raw numerics for CSV export (no 'AED'/'%' strings, no thousands separators)
+  const raw = v => isFinite(v) ? String(Math.round(v * 1e6) / 1e6) : '';
+  const rawRows = [
+    ['Total nominal paid', r => r.nominal],
+    ['Real cost today (NPV)', r => r.npvCost],
+    ['IRR if sold at handover', r => r.irr],
+    ['Sale price at handover', r => r.salePrice],
+    ['Cash needed in first 12 months', r => r.cash12],
+    ['Paid by handover', r => r.paidByHandover],
+  ];
+  lastTable = { names: results.map(r => r.name), rows: rawRows.map(([label, fn]) => [label, ...results.map(r => raw(fn(r)))]) };
 
   drawBars(
     document.getElementById('npvChart'),

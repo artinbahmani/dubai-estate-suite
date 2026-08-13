@@ -5,13 +5,16 @@ const AGENCY_FEE_RATE = 0.02;
 const VAT_RATE = 0.05;
 const SENS_STEPS = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20];
 const HOLD_YEAR_OFFSETS = [0, 6, 12];
+// min % of price paid before the developer allows assignment/resale
+const DEV_MIN_PAID = { emaar: 40, damac: 35, nakheel: 45, sobha: 40 };
+const DEV_NAMES = { emaar: 'Emaar', damac: 'DAMAC', nakheel: 'Nakheel', sobha: 'Sobha' };
 
 // Selling costs and net cash to the seller at a given resale price.
 // Net is the same whether the buyer takes over the plan or the seller
 // settles it — only the flow of funds differs (shown in the breakdown).
-function closingAt(resale, outstanding, vatOn, noc) {
+function closingAt(resale, outstanding, vatOn, noc, assignFee) {
   const agency = resale * AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
-  const costs = agency + noc;
+  const costs = agency + noc + assignFee;
   return { agency, costs, net: resale - outstanding - costs };
 }
 
@@ -39,25 +42,45 @@ function roiClass(v) {
   return v > 0 ? 'pos' : v < 0 ? 'neg' : '';
 }
 
+// Name the input that makes the deal uncomputable, or null if it is computable.
+function dealProblem(price, invested, months) {
+  if (price <= 0) return 'launch price is 0';
+  if (invested <= 0) return '% paid is 0 — no cash invested yet';
+  if (months <= 0) return 'months held is 0';
+  return null;
+}
+
 function render() {
   const price = numVal('inPrice');
-  const pctPaid = numVal('inPctPaid') / 100;
+  const pctRaw = numVal('inPctPaid');
   const months = numVal('inMonths');
   const resale = numVal('inResale');
   const noc = numVal('inNoc');
+  const assignPct = numVal('inAssignPct');
+  const benchmark = numOr('inBenchmark', 15) / 100;
   const vatOn = document.getElementById('inVat').checked;
   const mode = strVal('inBalance');
+  const dev = strVal('inDeveloper');
 
-  const invested = price * Math.min(Math.max(pctPaid, 0), 1);
+  // clamp % paid to [0, 100] and warn visibly when the typed value exceeded 100
+  const pctWarn = document.getElementById('oPctWarn');
+  if (pctRaw > 100) {
+    pctWarn.style.display = '';
+    pctWarn.textContent = '% paid clamped to 100% — you cannot have paid more than the launch price.';
+  } else {
+    pctWarn.style.display = 'none';
+  }
+  const invested = price * Math.min(Math.max(pctRaw, 0), 100) / 100;
   const outstanding = Math.max(0, price - invested);
-  const c = closingAt(resale, outstanding, vatOn, noc);
+  const assignFee = price * Math.max(assignPct, 0) / 100;
+  const c = closingAt(resale, outstanding, vatOn, noc, assignFee);
   const profit = c.net - invested;
   const roi = invested > 0 ? profit / invested : NaN;
   const annRoi = annualized(roi, months);
 
   // resale price where proceeds exactly cover costs + cash in (zero profit)
   const feeRate = AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
-  const breakeven = (invested + outstanding + noc) / (1 - feeRate);
+  const breakeven = (invested + outstanding + noc + assignFee) / (1 - feeRate);
 
   setStat('oCash', fmtAED(invested));
   setStat('oOutstanding', fmtAED(outstanding));
@@ -69,19 +92,32 @@ function render() {
   setStat('oBreakeven', fmtAED(breakeven), resale >= breakeven ? 'pos' : 'neg');
 
   // verdict on annualized return
+  const problem = dealProblem(price, invested, months);
   const v = document.getElementById('oVerdict');
   if (!isFinite(annRoi)) {
     v.className = 'verdict warn';
-    v.textContent = 'Enter a valid deal to assess the flip.';
-  } else if (annRoi > 0.15) {
+    v.textContent = problem
+      ? 'Cannot assess the flip — ' + problem + '.'
+      : 'Enter a valid deal to assess the flip.';
+  } else if (annRoi > benchmark) {
     v.className = 'verdict ok';
-    v.textContent = 'Strong flip — annualized ROI of ' + fmtPct(annRoi) + ' clears the 15% bar.';
+    v.textContent = 'Strong flip — annualized ROI of ' + fmtPct(annRoi) + ' clears the ' + fmtPct(benchmark, 0) + ' bar.';
   } else if (annRoi >= 0) {
     v.className = 'verdict warn';
     v.textContent = 'Marginal — ' + fmtPct(annRoi) + ' annualized; holding may compound better.';
   } else {
     v.className = 'verdict bad';
     v.textContent = 'Do not sell — this resale price locks in a loss of ' + fmtAED(Math.abs(profit)) + '.';
+  }
+
+  // developer minimum-paid check — warning only, never blocks the numbers
+  const devWarn = document.getElementById('oDevWarn');
+  const minPaid = DEV_MIN_PAID[dev];
+  if (minPaid && Math.min(Math.max(pctRaw, 0), 100) < minPaid) {
+    devWarn.style.display = '';
+    devWarn.textContent = 'Assignment likely blocked — ' + DEV_NAMES[dev] + ' requires ~' + minPaid + '% paid before resale.';
+  } else {
+    devWarn.style.display = 'none';
   }
 
   // closing breakdown — rows follow the chosen flow of funds
@@ -94,21 +130,23 @@ function render() {
     rows.push(['Settle remaining balance to developer', -outstanding]);
   }
   rows.push(['Agency fee 2%' + (vatOn ? ' + 5% VAT' : ''), -c.agency]);
-  rows.push(['Developer NOC / assignment fee', -noc]);
+  rows.push(['Developer assignment fee (' + assignPct + '% of launch price)', -assignFee]);
+  rows.push(['Developer NOC fee', -noc]);
   document.getElementById('oBreakdown').innerHTML =
     rows.map(([label, amt]) =>
       '<tr><td>' + label + '</td><td class="num">' + fmtAED(amt) + '</td></tr>'
     ).join('') +
-    '<tr><td><strong>Net cash out at closing</strong></td><td class="num"><strong>' + fmtAED(c.net) + '</strong></td></tr>' +
+    '<tr><td><strong>Net cash to you at closing</strong></td><td class="num"><strong>' + fmtAED(c.net) + '</strong></td></tr>' +
     '<tr><td>Less: cash invested so far</td><td class="num">' + fmtAED(-invested) + '</td></tr>' +
     '<tr><td><strong>Profit</strong></td><td class="num"><strong>' + fmtAED(profit) + '</strong></td></tr>';
 
-  // flip vs hold — hold pays the plan to 100%, rents out, then sells at handover value
+  // flip vs hold — hold pays the plan to 100%, rents out, then sells at the entered sale value
   const holdValue = numOr('inHoldValue', resale * 1.1);
   const holdRent = numOr('inHoldRent', holdValue * 0.06);
   const holdYears = Math.max(0, numOr('inHoldYears', 2));
-  const holdClosing = closingAt(holdValue, 0, vatOn, noc); // balance settled by then
-  const holdNetCash = holdClosing.net + holdRent * holdYears;
+  const netRentFactor = Math.min(Math.max(numOr('inNetRent', 70), 0), 100) / 100;
+  const holdClosing = closingAt(holdValue, 0, vatOn, noc, 0); // balance settled, no assignment fee post-handover
+  const holdNetCash = holdClosing.net + holdRent * netRentFactor * holdYears;
   const holdDeployed = invested + outstanding;
   const holdProfit = holdNetCash - holdDeployed;
   const holdRoi = holdDeployed > 0 ? holdProfit / holdDeployed : NaN;
@@ -130,7 +168,9 @@ function render() {
   const hv = document.getElementById('oHoldVerdict');
   if (!isFinite(annRoi) || !isFinite(holdAnnRoi)) {
     hv.className = 'verdict warn';
-    hv.textContent = 'Enter a valid deal to compare flipping vs holding.';
+    hv.textContent = problem
+      ? 'Cannot compare flipping vs holding — ' + problem + '.'
+      : 'Enter a valid deal to compare flipping vs holding.';
   } else if (holdAnnRoi > annRoi) {
     hv.className = 'verdict ok';
     hv.textContent = 'Hold wins — ' + fmtPct(holdAnnRoi) + ' annualized vs ' + fmtPct(annRoi) + ' if you flip now, on ' + fmtAED(holdDeployed) + ' deployed instead of ' + fmtAED(invested) + '.';
@@ -148,7 +188,7 @@ function render() {
     const r = resale * (1 + s);
     grid += '<tr><td>' + (s > 0 ? '+' : '') + Math.round(s * 100) + '% · ' + fmtCompact(r) + '</td>';
     monthCols.forEach(m => {
-      const cc = closingAt(r, outstanding, vatOn, noc);
+      const cc = closingAt(r, outstanding, vatOn, noc, assignFee);
       const a = annualized(invested > 0 ? (cc.net - invested) / invested : NaN, m);
       const color = !isFinite(a) ? '#9aa0a6' : a > 0.15 ? '#3fb950' : a >= 0 ? '#d4af37' : '#f85149';
       grid += '<td class="num" style="color:' + color + ';font-weight:600;">' + fmtPct(a) + '</td>';
@@ -159,7 +199,7 @@ function render() {
 
   // sensitivity: profit across resale price steps
   const points = SENS_STEPS.map((s, i) => {
-    const cc = closingAt(resale * (1 + s), outstanding, vatOn, noc);
+    const cc = closingAt(resale * (1 + s), outstanding, vatOn, noc, assignFee);
     return [i, cc.net - invested];
   });
   drawLine(document.getElementById('sensChart'),

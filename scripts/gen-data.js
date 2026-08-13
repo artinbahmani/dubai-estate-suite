@@ -37,12 +37,17 @@ const RENT_INDEX = {
 };
 
 // yearly avg FX: units of foreign currency per 1 USD (approx historical)
+// covers the top DLD buyer nationalities: India, UK, Pakistan, China, Russia, Egypt, Turkey
 const FX_PER_USD = {
+  USD: [1, 1, 1, 1, 1, 1, 1, 1],
   EUR: [0.893, 0.877, 0.845, 0.951, 0.924, 0.924, 0.885, 0.870],
   GBP: [0.783, 0.780, 0.727, 0.811, 0.804, 0.787, 0.770, 0.755],
   INR: [70.4, 74.1, 73.9, 78.6, 82.6, 83.4, 84.6, 85.5],
-  RUB: [64.7, 73.7, 73.7, 68.4, 85.0, 92.5, 91.0, 90.0],
+  PKR: [150.2, 160.5, 162.9, 204.8, 283.0, 278.9, 281.0, 283.5],
   CNY: [6.91, 6.90, 6.45, 6.73, 7.08, 7.20, 7.25, 7.22],
+  RUB: [64.7, 73.7, 73.7, 68.4, 85.0, 92.5, 91.0, 90.0],
+  EGP: [16.8, 15.8, 15.7, 19.2, 30.7, 47.8, 49.6, 50.4],
+  TRY: [5.67, 7.01, 8.89, 16.55, 23.7, 32.8, 36.6, 38.4],
   AED: [3.6725, 3.6725, 3.6725, 3.6725, 3.6725, 3.6725, 3.6725, 3.6725],
 };
 const FX_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
@@ -80,14 +85,18 @@ for (let m = 0; m < months; m++) {
       const beds = villa
         ? 3 + Math.floor(rand() * 3)
         : [0, 1, 1, 2, 2, 2, 3][Math.floor(rand() * 7)];
+      const price = Math.round(ppsf * sqft);
+      // store ppsf derived from the stored price so price/sqft always reconciles
+      const day = 1 + Math.floor(rand() * 28);
+      const txDate = date.slice(0, 8) + String(day).padStart(2, '0');
       txs.push({
-        date,
+        date: txDate,
         community: name,
         type: villa ? 'villa' : 'apartment',
         beds,
         sqft,
-        price: Math.round(ppsf * sqft),
-        ppsf: Math.round(ppsf),
+        price,
+        ppsf: Math.round(price / sqft),
         offplan: rand() < offplanShare,
       });
     }

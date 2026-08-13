@@ -30,7 +30,7 @@ function economics(strategy, baseRent, sqft) {
   const vacancy = gross * numVal('vac') / 100;
   const maintenance = gross * numVal('maint') / 100;
   const mgmt = gross * mgmtPct / 100;
-  const utilities = strategy === 'short' ? 400 * 12 : 0;
+  const utilities = strategy === 'short' ? numVal('utilities') * 12 : 0;
   const costs = service + vacancy + maintenance + mgmt + utilities;
   return { gross, costs, net: gross - costs };
 }
@@ -40,6 +40,13 @@ function annuityMonthly(principal, annualRatePct, years) {
   if (principal <= 0 || n <= 0) return 0;
   if (r <= 0) return principal / n;
   return principal * r / (1 - Math.pow(1 + r, -n));
+}
+
+// green for gains, red for losses
+function setSign(id, v) {
+  const el = document.getElementById(id);
+  el.classList.toggle('pos', v >= 0);
+  el.classList.toggle('neg', v < 0);
 }
 
 function render() {
@@ -56,18 +63,26 @@ function render() {
   let coc = price > 0 ? eco.net / price : NaN;
   let monthlyPayment = 0;
   if (mortgaged) {
-    const loan = price * numVal('ltv') / 100;
+    const loan = price * Math.min(80, numVal('ltv')) / 100; // CBUAE caps LTV at 80%
     monthlyPayment = annuityMonthly(loan, numVal('rate'), numVal('years'));
-    const cashInvested = price - loan;
+    const cashInvested = price - loan + price * numVal('acqPct') / 100;
     coc = cashInvested > 0 ? (eco.net - monthlyPayment * 12) / cashInvested : NaN;
   }
 
   document.getElementById('sGross').textContent = price > 0 ? fmtPct(eco.gross / price) : '—';
   document.getElementById('sCosts').textContent = fmtAED(eco.costs);
   document.getElementById('sNet').textContent = price > 0 ? fmtPct(eco.net / price) : '—';
+  setSign('sNet', eco.net);
   document.getElementById('sCoC').textContent = isFinite(coc) ? fmtPct(coc) : '—';
-  document.getElementById('sMonthly').textContent = fmtAED(eco.net / 12);
+  if (isFinite(coc)) setSign('sCoC', coc);
+  document.getElementById('sMonthlyK').textContent = mortgaged ? 'Monthly net income (after debt service)' : 'Monthly net income';
+  document.getElementById('sMonthly').textContent = fmtAED(mortgaged ? (eco.net - monthlyPayment * 12) / 12 : eco.net / 12);
   document.getElementById('sMortgage').textContent = mortgaged ? fmtAED(monthlyPayment) : '—';
+
+  // strategy note tracks the live short-term assumptions
+  document.getElementById('strNote').textContent = 'Short-term applies the revenue uplift to rent (' +
+    numVal('uplift') + '%), ' + mgmtST + '% management and ' + fmtAED(numVal('utilities')) +
+    '/month utilities. The active strategy drives the stats and charts below.';
 
   drawBars(document.getElementById('chart'),
     ['Gross rent', 'Costs', 'Net income'],
@@ -96,9 +111,11 @@ function render() {
     totalNet += yr.net;
   }
   const value5 = price * Math.pow(1 + a, 5);
+  const totalRet = totalNet + value5 - price;
   document.getElementById('sNet5').textContent = fmtAED(totalNet);
   document.getElementById('sVal5').textContent = fmtAED(value5);
-  document.getElementById('sTotalRet').textContent = price > 0 ? fmtPct((totalNet + value5 - price) / price) : '—';
+  document.getElementById('sTotalRet').textContent = price > 0 ? fmtPct(totalRet / price) : '—';
+  setSign('sTotalRet', totalRet);
 
   drawBars(document.getElementById('projChart'), labels,
     [{ label: 'Net income / yr', values: nets, color: SERIES_COLORS[2] }],
@@ -112,7 +129,15 @@ function render() {
 
   const contract = numVal('contractRent');
   const verdict = document.getElementById('rVerdict');
-  if (idx <= 0 || contract <= 0) {
+  if (idx <= 0) {
+    document.getElementById('rBelow').textContent = '—';
+    document.getElementById('rAllowed').textContent = '—';
+    document.getElementById('rMax').textContent = '—';
+    verdict.className = 'verdict warn';
+    verdict.textContent = 'No index data for this community and unit type — pick another combination.';
+    return;
+  }
+  if (contract <= 0) {
     document.getElementById('rBelow').textContent = '—';
     document.getElementById('rAllowed').textContent = '—';
     document.getElementById('rMax').textContent = '—';
@@ -121,11 +146,13 @@ function render() {
     return;
   }
 
-  const belowPct = Math.max(0, (idx - contract) / idx * 100);
-  const allowed = allowedIncrease(belowPct);
+  const diffPct = (idx - contract) / idx * 100;
+  const allowed = allowedIncrease(Math.max(0, diffPct));
   const maxNew = contract * (1 + allowed / 100);
 
-  document.getElementById('rBelow').textContent = belowPct.toFixed(1) + '%';
+  document.getElementById('rBelow').textContent = diffPct >= 0
+    ? diffPct.toFixed(1) + '% below'
+    : (-diffPct).toFixed(1) + '% above';
   document.getElementById('rAllowed').textContent = allowed + '%';
   document.getElementById('rMax').textContent = fmtAED(maxNew);
 
@@ -148,12 +175,26 @@ function init() {
     sel.appendChild(opt);
   }
   sel.value = 'Dubai Marina';
-  document.getElementById('rent').value = indexRent();
 
-  // community/beds change re-fills rent from the index; everything else just recalcs
-  sel.addEventListener('change', () => { document.getElementById('rent').value = indexRent(); render(); });
-  document.getElementById('beds').addEventListener('change', () => { document.getElementById('rent').value = indexRent(); render(); });
-  for (const id of ['price', 'rent', 'sqft', 'svc', 'vac', 'maint', 'contractRent', 'uplift', 'ltv', 'rate', 'years', 'rentGrowth', 'appr']) {
+  // rent fields autofill from the index until the user types their own value;
+  // a field counts as clean while it is untouched or still holds the last index value
+  let rentTouched = false, contractTouched = false;
+  let prevIdx = indexRent();
+  document.getElementById('rent').value = prevIdx;
+  document.getElementById('contractRent').value = prevIdx;
+  const autofill = () => {
+    const idx = indexRent();
+    if (!rentTouched || numVal('rent') === prevIdx) document.getElementById('rent').value = idx;
+    if (!contractTouched || numVal('contractRent') === prevIdx) document.getElementById('contractRent').value = idx;
+    prevIdx = idx;
+    render();
+  };
+  sel.addEventListener('change', autofill);
+  document.getElementById('beds').addEventListener('change', autofill);
+  document.getElementById('rent').addEventListener('input', () => { rentTouched = true; });
+  document.getElementById('contractRent').addEventListener('input', () => { contractTouched = true; });
+
+  for (const id of ['price', 'rent', 'sqft', 'svc', 'vac', 'maint', 'contractRent', 'uplift', 'utilities', 'ltv', 'rate', 'years', 'acqPct', 'rentGrowth', 'appr']) {
     document.getElementById(id).addEventListener('input', render);
   }
 
@@ -167,6 +208,7 @@ function init() {
     const s = strVal('strategy');
     document.getElementById('mgmt').value = s === 'short' ? mgmtST : mgmtLT;
     document.getElementById('upliftField').hidden = s !== 'short';
+    document.getElementById('utilField').hidden = s !== 'short';
     render();
   });
 

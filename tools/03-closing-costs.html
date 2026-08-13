@@ -39,7 +39,8 @@
       </div>
       <div class="field" id="ltvField">
         <label for="ltv">Loan-to-value (%) <span class="range-val" id="ltvVal">80%</span></label>
-        <input type="range" id="ltv" min="10" max="90" step="5" value="80">
+        <input type="range" id="ltv" min="10" max="80" step="5" value="80">
+        <div class="note">CBUAE caps LTV at ~80% for expat first homes; off-plan mortgages effectively reach ~50% at handover.</div>
       </div>
       <div class="field">
         <label for="agencyPct">Agency fee (%) <span class="range-val" id="agencyVal">2%</span></label>
@@ -98,6 +99,7 @@
         </thead>
         <tbody id="costRows"></tbody>
       </table>
+      <div class="note" id="offplanNote" style="display:none; margin-top:10px;">With an off-plan purchase financed by mortgage, the valuation and bank arrangement fee are due at loan approval, while mortgage registration is deferred to handover.</div>
     </div>
     <div class="card">
       <h2 id="donutTitle">Cost mix</h2>

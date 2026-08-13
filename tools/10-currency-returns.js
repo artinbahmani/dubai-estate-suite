@@ -2,21 +2,20 @@
 // FX_DATA comes from ../data/fx.js: yearly averages, units of currency per 1 USD.
 
 // AED_PER_USD (3.6725 peg) comes from shared.js
-const LAST = FX_DATA.years.length - 1; // index of the latest (current) year
-const CCYS = ['EUR', 'GBP', 'INR', 'RUB', 'CNY'];
+// index of the latest (current) year — don't assume years[] is sorted
+const LAST = FX_DATA.years.indexOf(Math.max(...FX_DATA.years));
+const CCYS = ['EUR', 'GBP', 'INR', 'RUB', 'CNY', 'USD', 'PKR', 'EGP', 'TRY'];
 
 // AED amount -> home currency at a given year index
 function toHome(aed, ccy, yi) {
   return (aed / AED_PER_USD) * FX_DATA.perUSD[ccy][yi];
 }
 
-// compact axis labels: 1234567 -> "1.23M"
-function compact(v) {
-  if (!isFinite(v)) return '—';
-  const a = Math.abs(v);
-  if (a >= 1e6) return fmtNum(v / 1e6, 2) + 'M';
-  if (a >= 1e3) return fmtNum(v / 1e3, 1) + 'k';
-  return fmtNum(v);
+// rent collected in years AFTER the purchase year, converted at each year's rate
+function rentHomeTotal(ccy, rentPerYear, pi) {
+  let sum = 0;
+  for (let yi = pi + 1; yi <= LAST; yi++) sum += toHome(rentPerYear, ccy, yi);
+  return sum;
 }
 
 function annualized(totalRet, years) {
@@ -31,10 +30,10 @@ function signedPp(x) {
 }
 
 // total return (fraction) in a given currency for the same AED inputs;
-// rent is valued at the exit-year rate, matching the headline figures
-function totalReturnIn(ccy, price, curVal, rentTotal, pi) {
+// rent is summed per-year at each year's rate, matching the headline figures
+function totalReturnIn(ccy, price, curVal, rentPerYear, pi) {
   const purchaseHome = toHome(price, ccy, pi);
-  const endHome = toHome(curVal + rentTotal, ccy, LAST);
+  const endHome = toHome(curVal, ccy, LAST) + rentHomeTotal(ccy, rentPerYear, pi);
   return purchaseHome > 0 ? endHome / purchaseHome - 1 : NaN;
 }
 
@@ -42,17 +41,19 @@ function render() {
   const ccy = strVal('cur');
   const pYear = Number(strVal('pYear'));
   const price = numVal('price');
-  const curVal = numVal('curVal');
-  const rentPerYear = numVal('rent');
+  const curVal = Math.max(0, numVal('curVal'));
+  const rentPerYear = Math.max(0, numVal('rent'));
 
   const pi = FX_DATA.years.indexOf(pYear);
   const holdYears = FX_DATA.years[LAST] - pYear;
   const rate = FX_DATA.perUSD[ccy];
   const rentTotal = rentPerYear * holdYears;
+  const rentHome = rentHomeTotal(ccy, rentPerYear, pi);
 
-  // purchase at purchase-year rate; exit value + rent at the latest rate
+  // purchase at purchase-year rate; exit value at the latest rate plus
+  // rent summed per-year at each year's rate (matches the table)
   const purchaseHome = toHome(price, ccy, pi);
-  const endHome = toHome(curVal + rentTotal, ccy, LAST);
+  const endHome = toHome(curVal, ccy, LAST) + rentHome;
 
   const aedRet = price > 0 ? (curVal + rentTotal) / price - 1 : NaN;
   const homeRet = purchaseHome > 0 ? endHome / purchaseHome - 1 : NaN;
@@ -72,15 +73,18 @@ function render() {
 
   document.getElementById('homeDetail').textContent =
     'Purchase cost: ' + ccy + ' ' + fmtNum(Math.round(purchaseHome)) +
-    ' at ' + rate[pi] + '/' + FX_DATA.years[pi] +
+    ' at ' + rate[pi] + ' ' + ccy + '/USD (' + FX_DATA.years[pi] + ' avg)' +
     ' · value + rent today: ' + ccy + ' ' + fmtNum(Math.round(endHome)) +
-    ' at ' + rate[LAST] + '/' + FX_DATA.years[LAST] +
+    ' at ' + rate[LAST] + ' ' + ccy + '/USD (' + FX_DATA.years[LAST] + ' avg)' +
     ' · annualized in AED: ' + fmtPct(annAed) + '.';
 
   // verdict: FX direction effect, then what it equals per year
   const v = document.getElementById('verdict');
   const pp = Math.abs(fxEffect * 100).toFixed(1);
-  const fxPerYear = annHome - annAed;
+  // multiplicative FX factor per year: (1+annHome)/(1+annAed) - 1
+  const fxPerYear = (isFinite(annHome) && isFinite(annAed) && annAed > -1)
+    ? (1 + annHome) / (1 + annAed) - 1
+    : NaN;
   const perYearSentence = isFinite(fxPerYear)
     ? 'That equals an annualized FX ' + (fxPerYear >= 0 ? 'boost' : 'drag') + ' of ' +
       fmtPct(Math.abs(fxPerYear)) + ' per year — ' + fmtPct(annHome) + ' annualized in ' +
@@ -108,22 +112,21 @@ function render() {
       perYearSentence;
   }
 
-  // series + table: straight-line AED value, converted at each year's rate
+  // series + table: straight-line AED value, converted at each year's rate;
+  // rent counts only for years AFTER the purchase year (holdYears years total)
   const points = [];
   const rows = [];
-  let rentHomeSum = 0;
   for (let yi = pi; yi <= LAST; yi++) {
     const t = LAST === pi ? 0 : (yi - pi) / (LAST - pi);
     const aedVal = price + (curVal - price) * t;
     const homeVal = toHome(aedVal, ccy, yi);
-    const rentHome = toHome(rentPerYear, ccy, yi);
-    rentHomeSum += rentHome;
+    const rentYr = yi > pi ? toHome(rentPerYear, ccy, yi) : 0;
     points.push([FX_DATA.years[yi], homeVal]);
     rows.push('<tr><td>' + FX_DATA.years[yi] + '</td>' +
       '<td class="num">' + fmtAED(aedVal) + '</td>' +
       '<td class="num">' + fmtNum(rate[yi], 4) + '</td>' +
       '<td class="num">' + ccy + ' ' + fmtNum(Math.round(homeVal)) + '</td>' +
-      '<td class="num">' + ccy + ' ' + fmtNum(Math.round(rentHome)) + '</td></tr>');
+      '<td class="num">' + ccy + ' ' + fmtNum(Math.round(rentYr)) + '</td></tr>');
   }
   document.getElementById('thHome').textContent = ccy + ' value';
   document.getElementById('thRent').textContent = 'Rent (' + ccy + ')';
@@ -131,7 +134,7 @@ function render() {
   document.getElementById('rentTotalRow').innerHTML =
     '<td>Total rent, ' + holdYears + ' yrs</td><td class="num">' + fmtAED(rentTotal) + '</td>' +
     '<td class="num">—</td><td class="num">—</td>' +
-    '<td class="num">' + ccy + ' ' + fmtNum(Math.round(rentHomeSum)) + '</td>';
+    '<td class="num">' + ccy + ' ' + fmtNum(Math.round(rentHome)) + '</td>';
 
   drawLine(document.getElementById('chart'), [{
     label: 'Value in ' + ccy,
@@ -139,19 +142,21 @@ function render() {
     points: points
   }], {
     xLabels: FX_DATA.years.slice(pi).map(String),
-    yFmt: compact
+    yFmt: v => fmtCompact(v, ccy + ' ')
   });
 
   // same AED deal, total return measured in each home currency; AED as reference
-  drawBars(document.getElementById('chartAll'), CCYS, [
+  // (skip any currency missing from the FX data)
+  const ccys = CCYS.filter(c => FX_DATA.perUSD[c]);
+  drawBars(document.getElementById('chartAll'), ccys, [
     {
       label: 'Home-currency return',
-      values: CCYS.map(c => totalReturnIn(c, price, curVal, rentTotal, pi))
+      values: ccys.map(c => totalReturnIn(c, price, curVal, rentPerYear, pi))
     },
     {
       label: 'AED reference',
       color: SERIES_COLORS[3],
-      values: CCYS.map(() => aedRet)
+      values: ccys.map(() => aedRet)
     }
   ], { yFmt: fmtPct });
 

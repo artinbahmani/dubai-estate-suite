@@ -85,6 +85,10 @@
         <label for="uplift">Short-term revenue uplift (%)</label>
         <input type="number" id="uplift" value="25" min="0" max="200" step="1">
       </div>
+      <div class="field" id="utilField" hidden>
+        <label for="utilities">Short-term utilities (AED / month)</label>
+        <input type="number" id="utilities" value="400" min="0" step="50">
+      </div>
       <table>
         <thead>
           <tr><th></th><th class="num">Net income / yr</th><th class="num">Net yield</th></tr>
@@ -94,7 +98,7 @@
           <tr id="cmpShort"><td>Short-term</td><td class="num" id="cmpShortNet">—</td><td class="num" id="cmpShortYield">—</td></tr>
         </tbody>
       </table>
-      <p class="note">Short-term applies the revenue uplift to rent, 15% management and AED 400/month utilities. The active strategy drives the stats and charts below.</p>
+      <p class="note" id="strNote">Short-term applies the revenue uplift to rent, 15% management and AED 400/month utilities. The active strategy drives the stats and charts below.</p>
     </section>
 
     <section class="card">
@@ -108,7 +112,7 @@
       <div id="mortgageFields" hidden>
         <div class="field">
           <label for="ltv">Loan-to-value (%)</label>
-          <input type="number" id="ltv" value="70" min="0" max="100" step="1">
+          <input type="number" id="ltv" value="70" min="0" max="80" step="1">
         </div>
         <div class="field">
           <label for="rate">Interest rate (% / yr)</label>
@@ -118,8 +122,12 @@
           <label for="years">Term (years)</label>
           <input type="number" id="years" value="25" min="1" max="30" step="1">
         </div>
+        <div class="field">
+          <label for="acqPct">Acquisition costs (% of price)</label>
+          <input type="number" id="acqPct" value="7" min="0" max="20" step="0.25">
+        </div>
       </div>
-      <p class="note">Cash-on-cash return = net income minus annual debt service, over the cash actually invested (down payment). Without a mortgage it equals the net yield.</p>
+      <p class="note">Cash-on-cash return = net income minus annual debt service, over the cash actually invested (down payment plus acquisition costs — DLD 4%, agency 2% + VAT, trustee and mortgage fees). Without a mortgage it equals the net yield. CBUAE caps LTV at 80%.</p>
     </section>
   </div>
 
@@ -130,7 +138,7 @@
       <div class="stat"><div class="k">Annual costs</div><div class="v neg" id="sCosts">—</div></div>
       <div class="stat"><div class="k">Net yield (unleveraged)</div><div class="v pos" id="sNet">—</div></div>
       <div class="stat"><div class="k">Cash-on-cash return</div><div class="v pos" id="sCoC">—</div></div>
-      <div class="stat"><div class="k">Monthly net income</div><div class="v" id="sMonthly">—</div></div>
+      <div class="stat"><div class="k" id="sMonthlyK">Monthly net income</div><div class="v" id="sMonthly">—</div></div>
       <div class="stat"><div class="k">Mortgage payment / mo</div><div class="v" id="sMortgage">—</div></div>
     </div>
     <div class="no-print" style="margin-top:12px;">
@@ -161,7 +169,7 @@
       <div class="stat"><div class="k">Value after 5 yrs</div><div class="v" id="sVal5">—</div></div>
       <div class="stat"><div class="k">Total 5-yr return (unleveraged)</div><div class="v pos" id="sTotalRet">—</div></div>
     </div>
-    <p class="note">Net income per year for the active strategy, with rent compounding at the growth rate; service charge and utilities held flat. Total return = 5 years of net income plus appreciation, over the purchase price.</p>
+    <p class="note">Net income per year for the active strategy, with rent compounding at the growth rate; service charge and utilities held flat. Total return = 5 years of net income plus appreciation, over the purchase price. For a sitting tenant, RERA caps renewal increases below free-market growth.</p>
   </section>
 
   <section class="card">
@@ -169,7 +177,7 @@
     <div class="grid grid-2">
       <div class="field">
         <label for="contractRent">Current contract rent (AED / yr)</label>
-        <input type="number" id="contractRent" value="65000" min="0" step="1000">
+        <input type="number" id="contractRent" min="0" step="1000">
       </div>
       <div class="field">
         <label>Index rent — <span id="indexRef">—</span></label>
@@ -177,12 +185,12 @@
       </div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="k">Below index</div><div class="v" id="rBelow">—</div></div>
+      <div class="stat"><div class="k">Above/below index</div><div class="v" id="rBelow">—</div></div>
       <div class="stat"><div class="k">Max allowed increase</div><div class="v" id="rAllowed">—</div></div>
       <div class="stat"><div class="k">Max legal new rent</div><div class="v" id="rMax">—</div></div>
     </div>
     <div class="verdict warn" id="rVerdict"></div>
-    <p class="note">RERA brackets: less than 10% below index — no increase; 11–20% below — 5%; 21–30% — 10%; 31–40% — 15%; more than 40% below — 20%. Any increase requires 90-day written notice before contract renewal. Reference: the official RERA rental index (Dubai REST app).</p>
+    <p class="note">RERA brackets: up to 10% below index — no increase; 11–20% below — 5%; 21–30% — 10%; 31–40% — 15%; more than 40% below — 20%. Any increase requires 90-day written notice before contract renewal. Reference: the official RERA rental index (Dubai REST app).</p>
   </section>
 </main>
 <footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>

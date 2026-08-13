@@ -32,6 +32,7 @@ function fmtCompact(n, prefix = 'AED ') {
 
 // flows: [{ date: 'YYYY-MM-DD' | Date, amount }]  (negative = outflow)
 function xnpv(rate, flows) {
+  if (!flows || !flows.length) return 0;
   const t0 = new Date(flows[0].date).getTime();
   let s = 0;
   for (const f of flows) {
@@ -41,24 +42,30 @@ function xnpv(rate, flows) {
   return s;
 }
 
-function xirr(flows, lo = -0.95, hi = 10) {
+function xirr(flows, lo = -0.95, hi = 10000) {
+  if (!flows || !flows.length) return NaN;
   const sorted = [...flows].sort((a, b) => new Date(a.date) - new Date(b.date));
   let flo = xnpv(lo, sorted), fhi = xnpv(hi, sorted);
   if (flo * fhi > 0) return NaN;
+  const scale = Math.max(1, Math.abs(flo), Math.abs(fhi));
   for (let i = 0; i < 100; i++) {
     const mid = (lo + hi) / 2;
     const fm = xnpv(mid, sorted);
-    if (Math.abs(fm) < 1e-7) return mid;
+    if (Math.abs(fm) < scale * 1e-10) return mid;
     if (flo * fm < 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
   }
   return (lo + hi) / 2;
 }
 
-// add months to a YYYY-MM-DD string, returns YYYY-MM-DD
+// add months to a YYYY-MM-DD string, returns YYYY-MM-DD.
+// Local-time parse + day clamp so 2026-01-31 + 1mo = 2026-02-28, not Mar 3.
 function addMonths(dateStr, m) {
-  const d = new Date(dateStr);
-  d.setMonth(d.getMonth() + m);
-  return d.toISOString().slice(0, 10);
+  const [y, mo, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  const target = new Date(y, mo - 1 + m, 1);
+  const dim = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(d, dim));
+  const p = (n) => String(n).padStart(2, '0');
+  return target.getFullYear() + '-' + p(target.getMonth() + 1) + '-' + p(target.getDate());
 }
 
 // ---- canvas charts ----
@@ -84,9 +91,9 @@ function _attachTooltip(canvas, hits, segFn) {
   canvas._segFn = segFn || null;
   if (canvas._tipAttached) return;
   canvas._tipAttached = true;
-  canvas.addEventListener('mousemove', (e) => {
+  const show = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const x = clientX - rect.left, y = clientY - rect.top;
     const tip = _tooltip();
     let text = canvas._segFn ? canvas._segFn(x, y) : null;
     if (!text && canvas._hits && canvas._hits.length) {
@@ -94,7 +101,7 @@ function _attachTooltip(canvas, hits, segFn) {
       for (const h of canvas._hits) {
         let d;
         if (h.x0 !== undefined) {
-          d = (x >= h.x0 && x <= h.x1 && y >= 0) ? 0 : Infinity; // bar: x-range match
+          d = (x >= h.x0 && x <= h.x1 && y >= 0 && y <= rect.height) ? 0 : Infinity; // bar: x-range match
         } else {
           d = Math.hypot(h.px - x, h.py - y);
         }
@@ -106,13 +113,41 @@ function _attachTooltip(canvas, hits, segFn) {
     if (text) {
       tip.textContent = text;
       tip.style.display = 'block';
-      tip.style.left = (e.clientX + 14) + 'px';
-      tip.style.top = (e.clientY + 14) + 'px';
+      tip.style.left = (clientX + 14) + 'px';
+      tip.style.top = (clientY + 14) + 'px';
     } else {
       tip.style.display = 'none';
     }
-  });
+  };
+  canvas.addEventListener('mousemove', (e) => show(e.clientX, e.clientY));
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length) show(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length) show(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
   canvas.addEventListener('mouseleave', () => { _tooltip().style.display = 'none'; });
+  canvas.addEventListener('touchend', () => { _tooltip().style.display = 'none'; });
+}
+
+// redraw charts when the window resizes — registered transparently by each draw*
+const _resizeCanvases = new Set();
+let _resizeBound = false;
+function _autoResize(canvas, redrawFn) {
+  canvas._redraw = redrawFn;
+  _resizeCanvases.add(canvas);
+  if (!_resizeBound) {
+    _resizeBound = true;
+    let t = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        for (const c of _resizeCanvases) {
+          if (c.isConnected && c._redraw) c._redraw();
+        }
+      }, 150);
+    });
+  }
 }
 
 function _chartSetup(canvas) {
@@ -178,6 +213,7 @@ function drawLine(canvas, series, opts = {}) {
     }
   }
   const hits = [];
+  const xSpan = xMax - xMin || 1;
   series.forEach((s, si) => {
     const color = s.color || SERIES_COLORS[si % SERIES_COLORS.length];
     ctx.strokeStyle = color;
@@ -185,10 +221,11 @@ function drawLine(canvas, series, opts = {}) {
     ctx.beginPath();
     const xCount = s.points.length;
     s.points.forEach(([x, y], i) => {
-      const px = pad.left + (xCount > 1 ? (i / (xCount - 1)) * plotW : plotW / 2);
+      const px = pad.left + ((x - xMin) / xSpan) * plotW;
       const py = pad.top + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
       i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      const xTxt = opts.xLabels && opts.xLabels[i] !== undefined ? String(opts.xLabels[i]) : fmtNum(x);
+      // xLabels are indexed by the x value itself (month index), not the point's position in the series
+      const xTxt = opts.xLabels && opts.xLabels[x] !== undefined ? String(opts.xLabels[x]) : fmtNum(x);
       const yTxt = opts.yFmt ? opts.yFmt(y) : fmtNum(y);
       hits.push({ px, py, text: (s.label ? s.label + ' · ' : '') + xTxt + ': ' + yTxt });
     });
@@ -209,6 +246,7 @@ function drawLine(canvas, series, opts = {}) {
     }
     return bestD <= 30 ? best.text : null;
   });
+  _autoResize(canvas, () => drawLine(canvas, series, opts));
 }
 
 // labels: string[], datasets: [{ label, values: number[] }]
@@ -252,6 +290,7 @@ function drawBars(canvas, labels, datasets, opts = {}) {
     for (const hb of hits) if (x >= hb.x0 && x <= hb.x1) return hb.text;
     return null;
   });
+  _autoResize(canvas, () => drawBars(canvas, labels, datasets, opts));
 }
 
 // items: [{ label, value, color }]
@@ -292,6 +331,7 @@ function drawDonut(canvas, items, opts = {}) {
     for (const s of segs) if (ang >= s.a0 && ang <= s.a1) return s.text;
     return null;
   });
+  _autoResize(canvas, () => drawDonut(canvas, items, opts));
 }
 
 // scatter: points: [{x, y, r?, color?}]
@@ -328,6 +368,7 @@ function drawScatter(canvas, points, opts = {}) {
     });
   }
   _attachTooltip(canvas, hits);
+  _autoResize(canvas, () => drawScatter(canvas, points, opts));
 }
 
 // small helper: read numeric input value

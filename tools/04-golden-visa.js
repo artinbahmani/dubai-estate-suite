@@ -1,16 +1,20 @@
 // Tool 04 — Golden Visa eligibility via the property route.
-// Rules (DLD/GDRFA):
-//  - threshold: AED 2,000,000 purchase price per title deed / Oqood; properties combine
+// Rules (DLD/GDRFA, as of Feb 2026):
+//  - threshold: AED 2,000,000 purchase price / DLD-certified value per title deed
+//    (ready) or Oqood (off-plan); properties combine
 //  - ready, owned outright: counts at full price
 //  - ready, mortgaged: counts at full price (bank NOC required) — eligible since Jan 2024
-//  - off-plan: counts at full price only if >= 50% paid AND >= 50% construction complete
+//  - off-plan: counts at full DLD-certified value regardless of amount paid or
+//    construction stage (Feb-2026 circular); must be from a RERA/DLD-approved
+//    developer and Oqood-registered. The completion slider is informational only.
+//  - joint ownership: each applicant's share must independently reach AED 2M,
+//    so counted value = price x ownership share %
 
 const THRESHOLD = 2000000;
-const MIN_PAID_PCT = 50;
-const MIN_BUILD_PCT = 50;
 
 const STORAGE_KEY = 'des-golden-visa';          // property list
 const CHECKLIST_KEY = 'des-golden-visa-checklist'; // checkbox states
+const BUDGET_KEY = 'des-golden-visa-budget';    // gap planner extra budget
 
 const STATUS = {
   owned:     'Ready — owned outright',
@@ -46,11 +50,15 @@ function buildRow() {
       </div>
       <div class="field">
         <label>Purchase price (AED)</label>
-        <input type="number" data-f="price" min="0" step="10000" value="2000000">
+        <input type="number" data-f="price" min="0" step="10000" value="">
       </div>
       <div class="field">
         <label>Amount already paid (AED)</label>
-        <input type="number" data-f="paid" min="0" step="10000" value="2000000">
+        <input type="number" data-f="paid" min="0" step="10000" value="">
+      </div>
+      <div class="field">
+        <label>Ownership share (%)</label>
+        <input type="number" data-f="share" min="0" max="100" step="1" value="100">
       </div>
     </div>
     <div class="field" data-f="buildField" style="display:none; margin-bottom:0">
@@ -64,11 +72,11 @@ function buildRow() {
 
   els.remove = wrap.querySelector('.remove');
   els.remove.addEventListener('click', () => removeRow(id));
-  for (const key of ['name', 'price', 'paid', 'build']) {
+  for (const key of ['name', 'price', 'paid', 'share', 'build']) {
     els[key].addEventListener('input', render);
   }
   els.status.addEventListener('change', () => {
-    // completion slider only matters for off-plan
+    // completion slider is informational only, shown for off-plan
     els.buildField.style.display = els.status.value === 'offplan' ? '' : 'none';
     render();
   });
@@ -77,18 +85,19 @@ function buildRow() {
   return { id, els };
 }
 
-function addRow(saved) {
+function addRow(saved, doRender = true) {
   const r = buildRow();
   if (saved) {
     r.els.name.value = saved.name || '';
     r.els.status.value = saved.status in STATUS ? saved.status : 'owned';
-    r.els.price.value = saved.price ?? 0;
-    r.els.paid.value = saved.paid ?? 0;
+    r.els.price.value = saved.price ?? '';
+    r.els.paid.value = saved.paid ?? '';
+    r.els.share.value = saved.share ?? 100;
     r.els.build.value = saved.build ?? 50;
     r.els.buildField.style.display = r.els.status.value === 'offplan' ? '' : 'none';
   }
   rows.push(r);
-  render();
+  if (doRender) render();
 }
 
 function removeRow(id) {
@@ -108,9 +117,11 @@ function saveState() {
       status: r.els.status.value,
       price: r.els.price.value,
       paid: r.els.paid.value,
+      share: r.els.share.value,
       build: r.els.build.value,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+    localStorage.setItem(BUDGET_KEY, document.getElementById('extraBudget').value);
   } catch (e) { /* file:// or private mode can block storage; persistence just degrades */ }
 }
 
@@ -126,28 +137,42 @@ function loadState() {
 
 // returns { counted, label, badges: [{ text, cls }] }
 function assess(r) {
-  const price = numVal(r.els.price);
-  const paid = numVal(r.els.paid);
+  const price = Math.max(0, numVal(r.els.price));
+  const rawPaid = Math.max(0, numVal(r.els.paid));
+  const share = Math.min(100, Math.max(0, numVal(r.els.share)));
   const status = r.els.status.value;
   const label = STATUS[status];
 
+  // paid is clamped to price for all math; warn when the entered amount exceeds it
+  const paidExceeded = rawPaid > price && rawPaid > 0;
+
+  if (status === 'offplan' && price <= 0) {
+    // special case: no price -> nothing to count, don't report '0% paid'
+    const badges = [{ text: 'counts for AED 0 — no price entered', cls: 'warn' }];
+    if (paidExceeded) badges.push({ text: 'amount paid exceeds price — capped at price', cls: 'warn' });
+    return { counted: 0, label, badges };
+  }
+
+  const counted = price * share / 100;
+  const badges = [];
   if (status === 'owned') {
-    return { counted: price, label, badges: [{ text: 'counts at full price', cls: 'ok' }] };
-  }
-  if (status === 'mortgaged') {
+    badges.push({ text: 'counts at full price', cls: 'ok' });
+  } else if (status === 'mortgaged') {
     // full price counts since Jan 2024, but the bank NOC is a filing requirement
-    return { counted: price, label, badges: [{ text: 'counts — bank NOC showing paid amount required', cls: 'warn' }] };
+    badges.push({ text: 'counts — bank NOC showing paid amount required', cls: 'warn' });
+  } else {
+    // Feb-2026 circular: off-plan counts at full DLD-certified value regardless
+    // of amount paid or construction stage
+    badges.push({ text: 'counts at full DLD-certified value', cls: 'ok' });
+    badges.push({ text: 'from a RERA/DLD-approved developer, Oqood-registered', cls: 'warn' });
   }
-  const build = numVal(r.els.build);
-  const paidPct = price > 0 ? (paid / price) * 100 : 0;
-  const qualifies = price > 0 && paidPct >= MIN_PAID_PCT && build >= MIN_BUILD_PCT;
-  if (qualifies) {
-    return { counted: price, label, badges: [{ text: 'counts — 50% paid & 50% built', cls: 'ok' }] };
+  if (share < 100) {
+    badges.push({ text: "each applicant's share must independently reach AED 2M", cls: 'warn' });
   }
-  const reasons = [];
-  if (paidPct < MIN_PAID_PCT) reasons.push(`only ${fmtPct(paidPct / 100, 0)} paid`);
-  if (build < MIN_BUILD_PCT) reasons.push(`only ${fmtNum(build, 0)}% built`);
-  return { counted: 0, label, badges: [{ text: 'counts at 0 — ' + (reasons.join(', ') || 'no price entered'), cls: 'warn' }] };
+  if (paidExceeded) {
+    badges.push({ text: 'amount paid exceeds price — capped at price', cls: 'warn' });
+  }
+  return { counted, label, badges };
 }
 
 // ---- render ----
@@ -258,6 +283,7 @@ document.getElementById('resetAll').addEventListener('click', () => {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(CHECKLIST_KEY);
+    localStorage.removeItem(BUDGET_KEY);
   } catch (e) { /* ignore */ }
   for (const r of rows) r.els.wrap.remove();
   rows.length = 0;
@@ -267,9 +293,15 @@ document.getElementById('resetAll').addEventListener('click', () => {
   addRow();
 });
 
+try {
+  const savedBudget = localStorage.getItem(BUDGET_KEY);
+  if (savedBudget !== null) document.getElementById('extraBudget').value = savedBudget;
+} catch (e) { /* storage unavailable */ }
+
 const restored = loadState();
 if (restored && restored.length) {
-  restored.forEach(p => addRow(p)); // each addRow re-renders; final render reflects all rows
+  restored.forEach(p => addRow(p, false)); // add all rows first...
+  render();                                 // ...then render once
 } else {
   addRow(); // start with one row; addRow() runs the initial render
 }

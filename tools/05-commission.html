@@ -34,17 +34,18 @@
         </div>
         <div class="field">
           <label for="op-comm">Developer commission <span class="range-val" id="op-comm-val">5.0%</span></label>
-          <input type="range" id="op-comm" min="3" max="7" step="0.1" value="5">
+          <input type="range" id="op-comm" min="2" max="10" step="0.1" value="5">
         </div>
         <div class="field">
-          <label for="op-rebate">Rebate to buyer (% of price)</label>
-          <input type="number" id="op-rebate" value="0" min="0" max="3" step="0.1">
+          <label for="op-rebate">Rebate (% of commission rebated to buyer)</label>
+          <input type="number" id="op-rebate" value="0" min="0" max="100" step="1">
         </div>
+        <div class="verdict warn" id="op-rebate-warn" hidden></div>
         <div class="field">
           <label for="op-deals">Deals per quarter</label>
           <input type="number" id="op-deals" value="2" min="0" step="1">
         </div>
-        <p class="note">Buyer pays 0% — the developer pays the brokerage 3–7% of the unit price. Off-plan is typically 2–3x more profitable per deal than resale.</p>
+        <p class="note">Buyer pays 0% — the developer pays the brokerage 2–10% of the unit price; bulk or incentive launches can pay above 7%. Any rebate to the buyer comes out of the agent's take-home, after the split — VAT stays on the full gross. Off-plan is typically 2–3x more profitable per deal than resale.</p>
       </div>
 
       <div class="card" id="panel-resale" hidden>
@@ -61,6 +62,10 @@
           <label><input type="checkbox" id="rs-dual" style="width:auto; margin-right:8px;">Dual agency — act for both sides</label>
         </div>
         <p class="note" id="rs-dual-note" hidden>Dual agency is legal in Dubai: the brokerage collects 2% from the buyer and 2% from the seller, so the fee is doubled.</p>
+        <div class="field">
+          <label for="rs-deals">Deals per quarter</label>
+          <input type="number" id="rs-deals" value="1" min="0" step="1">
+        </div>
         <p class="note">2% of the sale price is customary on the secondary market, paid by the buyer (tenant pays on rentals).</p>
       </div>
 
@@ -69,6 +74,10 @@
         <div class="field">
           <label for="rn-rent">Annual rent (AED)</label>
           <input type="number" id="rn-rent" value="90000" min="0" step="5000">
+        </div>
+        <div class="field">
+          <label for="rn-deals">Deals per quarter</label>
+          <input type="number" id="rn-deals" value="4" min="0" step="1">
         </div>
         <p class="note">Commission is 5% of the annual rent, subject to an AED 5,000 minimum, paid by the tenant.</p>
       </div>
@@ -89,7 +98,7 @@
         <div class="stats">
           <div class="stat"><div class="k">Gross commission</div><div class="v" id="s-gross">—</div></div>
           <div class="stat"><div class="k">VAT (5%)</div><div class="v" id="s-vat">—</div></div>
-          <div class="stat"><div class="k">Net commission (incl. VAT)</div><div class="v" id="s-net">—</div></div>
+          <div class="stat"><div class="k">Total invoiced (incl. VAT)</div><div class="v" id="s-net">—</div></div>
           <div class="stat"><div class="k">Agent take-home</div><div class="v pos" id="s-agent">—</div></div>
           <div class="stat"><div class="k">Brokerage keeps</div><div class="v" id="s-broker">—</div></div>
           <div class="stat"><div class="k">Agent income / quarter</div><div class="v" id="s-quarter">—</div></div>
@@ -159,7 +168,7 @@
           <td colspan="4">Quarterly agent income</td><td class="num" id="pl-total-q">—</td><td class="no-print"></td>
         </tr>
         <tr>
-          <td colspan="4">Annualized agent income</td><td class="num" id="pl-total-y">—</td><td class="no-print"></td>
+          <td colspan="4">Annualized if this quarter repeats</td><td class="num" id="pl-total-y">—</td><td class="no-print"></td>
         </tr>
       </tfoot>
     </table>

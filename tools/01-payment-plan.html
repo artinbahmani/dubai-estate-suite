@@ -16,7 +16,7 @@
 </header>
 <main class="container">
   <h1>Payment Plan Calculator</h1>
-  <p class="subtitle">Model any off-plan payment structure — milestone schedule, cumulative cash, NPV and IRR.</p>
+  <p class="subtitle">Model any off-plan payment structure — milestone schedule, cumulative cash, PV of payments and IRR.</p>
 
   <div class="grid grid-2">
     <div class="card">
@@ -63,7 +63,7 @@
         <label for="phMonths">Post-handover period (months)</label>
         <input type="number" id="phMonths" value="24" min="1" max="120" step="1">
       </div>
-      <p class="note" id="clampNote" hidden>Booking exceeds the construction share — construction milestones set to zero.</p>
+      <p class="note" id="clampNote" hidden>Booking exceeds the construction share — handover share reduced so the plan still totals 100%.</p>
     </div>
 
     <div class="card">
@@ -81,7 +81,7 @@
         <input type="number" id="cashDisc" value="5" min="0" max="30" step="0.5">
       </div>
       <div class="stats">
-        <div class="stat"><div class="k">NPV of payment stream</div><div class="v" id="statNpv">—</div></div>
+        <div class="stat"><div class="k">PV of payments (present cost)</div><div class="v" id="statNpv">—</div></div>
         <div class="stat"><div class="k">IRR if sold at handover</div><div class="v" id="statIrr">—</div></div>
       </div>
       <div class="stats">

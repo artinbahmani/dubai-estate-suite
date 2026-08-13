@@ -57,9 +57,10 @@
       </div>
       <div class="field">
         <label style="text-transform:none; letter-spacing:0;">
-          <input type="checkbox" id="offplanOn" checked style="width:auto; margin-right:6px;">
+          <input type="checkbox" id="offplanOn" style="width:auto; margin-right:6px;">
           Include off-plan comps
         </label>
+        <div class="note" style="margin-top:4px;">Off by default — off-plan launch prices and secondary-market prices are structurally different markets.</div>
       </div>
     </div>
   </div>
@@ -100,6 +101,7 @@
       </thead>
       <tbody id="compsBody"></tbody>
     </table>
+    <div class="note" id="tableNote" style="margin-top:8px;"></div>
     <div style="margin-top:12px;">
       <button class="btn ghost small no-print" id="exportCsv">Export CSV</button>
     </div>

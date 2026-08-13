@@ -63,17 +63,15 @@ function clearCanvas(canvas, msg) {
   ctx.fillText(msg, canvas.clientWidth / 2, canvas.clientHeight / 2);
 }
 
-// median ppsf per month; months without records are skipped (and their labels dropped)
+// median ppsf per month; x = index on the full month axis, months without
+// records are omitted (the x coordinate keeps the lines month-aligned)
 function medianSeries(grouped) {
-  const pts = [], labels = [];
-  let i = 0;
-  for (const [ym, list] of grouped) {
-    if (!list.length) continue;
-    pts.push([i, median(list.map(r => r.ppsf))]);
-    labels.push(monthLabel(ym));
-    i++;
-  }
-  return { pts, labels };
+  const pts = [];
+  months.forEach((ym, i) => {
+    const list = grouped.get(ym);
+    if (list.length) pts.push([i, median(list.map(r => r.ppsf))]);
+  });
+  return pts;
 }
 
 function render() {
@@ -81,39 +79,44 @@ function render() {
 
   // ---- stat cards ----
   const offplanCount = filtered.filter(r => r.offplan).length;
-  const avgTicket = filtered.length ? filtered.reduce((s, r) => s + r.price, 0) / filtered.length : NaN;
+  const medTicket = median(filtered.map(r => r.price));
   document.getElementById('s-count').textContent = fmtNum(filtered.length);
   document.getElementById('s-ppsf').textContent = fmtNum(median(filtered.map(r => r.ppsf)));
   document.getElementById('s-offplan').textContent = filtered.length ? fmtPct(offplanCount / filtered.length) : '—';
-  document.getElementById('s-ticket').textContent = fmtAED(avgTicket);
+  document.getElementById('s-ticket').textContent = fmtAED(medTicket);
 
   const grouped = groupByMonth(filtered);
 
   // ---- (a) monthly transaction count ----
-  const counts = months.map(ym => grouped.get(ym).length);
-  drawBars(
-    document.getElementById('c-volume'),
-    months.map(monthLabel),
-    [{ label: 'Transactions', values: counts, color: SERIES_COLORS[0] }]
-  );
+  const volCanvas = document.getElementById('c-volume');
+  if (!filtered.length) {
+    clearCanvas(volCanvas, 'No data for this selection');
+  } else {
+    const counts = months.map(ym => grouped.get(ym).length);
+    drawBars(
+      volCanvas,
+      months.map(monthLabel),
+      [{ label: 'Transactions', values: counts, color: SERIES_COLORS[0] }]
+    );
+  }
 
   // ---- (b) median ppsf: selected community vs all Dubai ----
-  const sel = medianSeries(grouped);
-  const all = medianSeries(groupByMonth(baseOnly));
+  const selPts = medianSeries(grouped);
+  const allPts = medianSeries(groupByMonth(baseOnly));
   const ppsfCanvas = document.getElementById('c-ppsf');
-  if (!sel.pts.length) {
+  if (!selPts.length) {
     clearCanvas(ppsfCanvas, 'No data for this selection');
   } else {
-    // x positions are index-based; the all-Dubai line is realigned to the same month axis
+    // x = month index on the full axis, so community and all-Dubai stay month-aligned
     const series = [];
     if (comm !== 'all') {
-      series.push({ label: comm, color: SERIES_COLORS[0], points: sel.pts });
-      series.push({ label: 'All Dubai', color: SERIES_COLORS[1], points: all.pts });
+      series.push({ label: comm, color: SERIES_COLORS[0], points: selPts });
+      series.push({ label: 'All Dubai', color: SERIES_COLORS[1], points: allPts });
     } else {
-      series.push({ label: 'All Dubai', color: SERIES_COLORS[0], points: all.pts });
+      series.push({ label: 'All Dubai', color: SERIES_COLORS[0], points: allPts });
     }
     drawLine(ppsfCanvas, series, {
-      xLabels: comm !== 'all' ? sel.labels : all.labels,
+      xLabels: months.map(monthLabel),
       yFmt: v => fmtNum(v)
     });
   }
@@ -137,36 +140,64 @@ function render() {
     });
   }
 
-  // ---- momentum: median ppsf, last 3 months vs first 3 ----
-  const firstSet = new Set(months.slice(0, 3));
+  // ---- momentum: median ppsf, last 3 months vs previous 3 ----
+  const prevSet = new Set(months.slice(-6, -3));
   const lastSet = new Set(months.slice(-3));
+  // same 3 months one year earlier, for the YoY stat
+  const yoySet = new Set(months.slice(-3).map(ym => (+ym.slice(0, 4) - 1) + ym.slice(4)));
   const windowMedian = (list, set) => {
     const vals = list.filter(r => set.has(r.date.slice(0, 7))).map(r => r.ppsf);
     return vals.length ? median(vals) : NaN;
   };
+  const windowCount = (list, set) => list.filter(r => set.has(r.date.slice(0, 7))).length;
   const momChange = list => {
-    const f = windowMedian(list, firstSet), l = windowMedian(list, lastSet);
-    return { first: f, last: l, change: isFinite(f) && isFinite(l) && f > 0 ? l / f - 1 : NaN };
+    const p = windowMedian(list, prevSet), l = windowMedian(list, lastSet);
+    return { prev: p, last: l, change: isFinite(p) && isFinite(l) && p > 0 ? l / p - 1 : NaN };
   };
   const mom = momChange(filtered);
+  const yoyBase = windowMedian(filtered, yoySet);
+  const yoyChange = isFinite(yoyBase) && isFinite(mom.last) && yoyBase > 0 ? mom.last / yoyBase - 1 : NaN;
   const signedPct = x => (isFinite(x) ? (x >= 0 ? '+' : '') + fmtPct(x) : '—');
   document.getElementById('s-momentum').textContent = signedPct(mom.change);
-  document.getElementById('s-mom-first').textContent = fmtNum(mom.first);
+  document.getElementById('s-yoy').textContent = signedPct(yoyChange);
+  document.getElementById('s-mom-first').textContent = fmtNum(mom.prev);
   document.getElementById('s-mom-last').textContent = fmtNum(mom.last);
 
-  // per-community momentum ranking (type + bedrooms filters only)
+  // per-community momentum ranking (type + bedrooms filters only);
+  // a community needs >= 10 records in each 3-month window to qualify
   const momByComm = new Map();
   for (const r of baseOnly) {
     if (!momByComm.has(r.community)) momByComm.set(r.community, []);
     momByComm.get(r.community).push(r);
   }
   const ranked = [...momByComm.entries()]
-    .map(([name, list]) => ({ name, change: momChange(list).change }))
-    .filter(c => isFinite(c.change))
+    .map(([name, list]) => ({
+      name,
+      change: momChange(list).change,
+      minN: Math.min(windowCount(list, prevSet), windowCount(list, lastSet))
+    }))
+    .filter(c => isFinite(c.change) && c.minN >= 10)
     .sort((a, b) => b.change - a.change);
-  const momRow = c => '<tr><td>' + c.name + '</td><td class="num">' + signedPct(c.change) + '</td></tr>';
-  document.getElementById('tbl-gainers').innerHTML = ranked.slice(0, 3).map(momRow).join('') || '<tr><td colspan="2">—</td></tr>';
-  document.getElementById('tbl-losers').innerHTML = ranked.slice(-3).reverse().map(momRow).join('') || '<tr><td colspan="2">—</td></tr>';
+  const fillMomRows = (bodyId, rows) => {
+    const body = document.getElementById(bodyId);
+    body.textContent = '';
+    if (!rows.length) {
+      const c = body.insertRow().insertCell();
+      c.colSpan = 2;
+      c.textContent = '—';
+      return;
+    }
+    for (const r of rows) {
+      const tr = body.insertRow();
+      tr.insertCell().textContent = r.name;
+      const c = tr.insertCell();
+      c.className = 'num';
+      c.textContent = signedPct(r.change);
+    }
+  };
+  fillMomRows('tbl-gainers', ranked.slice(0, 3));
+  // losers start after the gainers slice so the two tables never overlap
+  fillMomRows('tbl-losers', ranked.slice(Math.max(3, ranked.length - 3)).reverse());
 
   // ---- mix: apartment vs villa share by count ----
   const mixCanvas = document.getElementById('c-mix');
@@ -195,12 +226,17 @@ function render() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  document.getElementById('tbl-top').innerHTML = top.map(t =>
-    '<tr><td>' + t.name + '</td>' +
-    '<td class="num">' + fmtNum(t.count) + '</td>' +
-    '<td class="num">' + fmtNum(t.ppsf) + '</td>' +
-    '<td class="num">' + fmtPct(t.offplan) + '</td></tr>'
-  ).join('');
+  const topBody = document.getElementById('tbl-top');
+  topBody.textContent = '';
+  for (const t of top) {
+    const tr = topBody.insertRow();
+    tr.insertCell().textContent = t.name;
+    for (const v of [fmtNum(t.count), fmtNum(t.ppsf), fmtPct(t.offplan)]) {
+      const c = tr.insertCell();
+      c.className = 'num';
+      c.textContent = v;
+    }
+  }
 }
 
 // populate community select from the data so it stays in sync with the dataset
@@ -211,6 +247,13 @@ for (const c of communities) {
   opt.textContent = c;
   commSelect.appendChild(opt);
 }
+
+// subtitle count and coverage badge are derived from the dataset, not hardcoded
+document.getElementById('subtitle').textContent =
+  'Transaction volume, price per sqft trends and off-plan vs ready share across ' +
+  communities.length + ' Dubai communities.';
+document.getElementById('data-through').textContent =
+  'Data through ' + monthLabel(months[months.length - 1]) + ' · sample dataset';
 
 // CSV export of the fully filtered record set
 function exportCsv() {
@@ -223,12 +266,13 @@ function exportCsv() {
   for (const r of rows) {
     lines.push([r.date, r.community, r.type, r.beds, r.sqft, r.price, r.ppsf, r.offplan].map(esc).join(','));
   }
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  // BOM so Excel reads the UTF-8 correctly; revoke deferred until the click is dispatched
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'market-pulse-export.csv';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
 }
 
 document.getElementById('f-community').addEventListener('change', render);

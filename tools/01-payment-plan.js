@@ -5,6 +5,7 @@
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 let lastRows = []; // milestone rows from the latest render, used by CSV export
+let hvDirty = false; // true once the user edits the expected handover value manually
 
 function shortDate(dateStr) {
   const d = new Date(dateStr);
@@ -13,19 +14,20 @@ function shortDate(dateStr) {
 
 function constructionShare() {
   const t = strVal('planTemplate');
-  return t === 'custom' ? numVal('customShare') : parseFloat(t);
+  return t === 'custom' ? Math.min(Math.max(0, numVal('customShare')), 100) : parseFloat(t);
 }
 
 // Build the milestone list: [{ month, label, pct, amount }]
 function buildMilestones() {
-  const price = numVal('price');
-  const bookingPct = Math.min(numVal('bookingPct'), 100);
+  const price = Math.max(0, numVal('price'));
+  const bookingPct = Math.min(Math.max(0, numVal('bookingPct')), 100);
   const constrMonths = Math.max(3, numVal('constrMonths'));
   const share = constructionShare();
-  const handoverPct = 100 - share;
+  // clamp the handover share so booking + construction + handover always totals 100%
+  const handoverPct = Math.max(0, Math.min(100 - share, 100 - bookingPct));
   const phOn = document.getElementById('phToggle').checked;
   const phMonths = Math.max(1, numVal('phMonths'));
-  const step = Math.max(1, numVal('milestoneFreq') || 3); // months between construction milestones
+  const step = Math.max(1, numVal('milestoneFreq')); // months between construction milestones
 
   const ms = [{ month: 0, label: 'Booking', pct: bookingPct, amount: price * bookingPct / 100 }];
 
@@ -35,19 +37,31 @@ function buildMilestones() {
   document.getElementById('clampNote').hidden = bookingPct <= share;
   const perInst = restPct / nInst;
   for (let i = 1; i <= nInst; i++) {
-    const m = Math.min(i * step, constrMonths);
-    ms.push({ month: m, label: 'Construction milestone ' + i, pct: perInst, amount: price * perInst / 100 });
+    ms.push({ month: i * step, label: 'Construction milestone ' + i, pct: perInst, amount: price * perInst / 100 });
   }
+
+  // when the last construction milestone lands in the handover month, merge both into one row
+  const collide = ms[ms.length - 1].month === constrMonths;
+  const addHandover = pct => {
+    if (collide) {
+      const lm = ms[ms.length - 1];
+      lm.label = 'Completion + handover';
+      lm.pct += pct;
+      lm.amount += price * pct / 100;
+    } else {
+      ms.push({ month: constrMonths, label: 'Handover', pct, amount: price * pct / 100 });
+    }
+  };
 
   if (phOn) {
     const half = handoverPct / 2;
-    ms.push({ month: constrMonths, label: 'Handover', pct: half, amount: price * half / 100 });
+    addHandover(half);
     const perM = handoverPct / 2 / phMonths;
     for (let i = 1; i <= phMonths; i++) {
       ms.push({ month: constrMonths + i, label: 'Post-handover ' + i, pct: perM, amount: price * perM / 100 });
     }
   } else {
-    ms.push({ month: constrMonths, label: 'Handover', pct: handoverPct, amount: price * handoverPct / 100 });
+    addHandover(handoverPct);
   }
   return { ms, constrMonths, phOn };
 }
@@ -62,7 +76,7 @@ function irrAtValue(rows, constrMonths, price, paidByHandover, saleValue) {
 }
 
 function render() {
-  const price = numVal('price');
+  const price = Math.max(0, numVal('price'));
   const today = new Date().toISOString().slice(0, 10);
   const { ms, constrMonths, phOn } = buildMilestones();
 
@@ -82,12 +96,16 @@ function render() {
   document.getElementById('statMonths').textContent = last ? last.month + ' mo' : '—';
 
   // table
+  const totPct = rows.reduce((s, r) => s + r.pct, 0);
   document.getElementById('planBody').innerHTML = rows.map(r =>
     '<tr><td>' + r.date + '</td><td>' + r.label + '</td>' +
-    '<td class="num">' + fmtPct(r.pct / 100, 1) + '</td>' +
+    '<td class="num">' + fmtPct(r.pct / 100, 2) + '</td>' +
     '<td class="num">' + fmtAED(r.amount) + '</td>' +
     '<td class="num">' + fmtAED(r.cum) + '</td></tr>'
-  ).join('');
+  ).join('') +
+  '<tr><td></td><td>Total</td>' +
+  '<td class="num">' + totPct.toFixed(2) + '%</td>' +
+  '<td class="num">' + fmtAED(last ? last.cum : 0) + '</td><td></td></tr>';
 
   // chart
   drawLine(document.getElementById('chart'), [{
@@ -97,11 +115,11 @@ function render() {
   }], { xLabels: rows.map(r => shortDate(r.date)), yFmt: fmtCompact });
 
   // investment view
-  const rate = numVal('discRate') / 100;
-  const valueAtHandover = numVal('handoverValue');
+  const rate = Math.max(0, numVal('discRate')) / 100;
+  const valueAtHandover = Math.max(0, numVal('handoverValue'));
   const flows = rows.map(r => ({ date: r.date, amount: -r.amount }));
-  const npv = -xnpv(rate, flows);
-  document.getElementById('statNpv').textContent = fmtAED(npv);
+  const pv = -xnpv(rate, flows); // present cost of the payment stream (outflows only)
+  document.getElementById('statNpv').textContent = fmtAED(pv);
 
   const irr = irrAtValue(rows, constrMonths, price, paidByHandover, valueAtHandover);
   document.getElementById('statIrr').textContent = isFinite(irr) ? fmtPct(irr, 1) + ' p.a.' : '—';
@@ -109,34 +127,37 @@ function render() {
   // verdict: payment plan (present cost) vs all-cash purchase at the entered discount
   const cashDiscPct = Math.min(Math.max(numVal('cashDisc'), 0), 100);
   const cashPrice = price * (1 - cashDiscPct / 100);
-  document.getElementById('statPlanPv').textContent = fmtAED(npv);
+  document.getElementById('statPlanPv').textContent = fmtAED(pv);
   document.getElementById('statCashPrice').textContent = fmtAED(cashPrice);
   const v = document.getElementById('verdict');
   const discLabel = fmtNum(cashDiscPct, cashDiscPct % 1 ? 1 : 0) + '%';
   if (price <= 0) {
     v.className = 'verdict warn';
     v.textContent = 'Enter a unit price to compare.';
-  } else if (npv <= cashPrice) {
+  } else if (pv <= cashPrice) {
     v.className = 'verdict ok';
-    v.textContent = 'Payment plan beats a ' + discLabel + ' cash discount — present cost ' + fmtAED(npv) + ' vs ' + fmtAED(cashPrice) + ' cash (saves ' + fmtAED(cashPrice - npv) + ').';
-  } else if (npv <= price) {
+    v.textContent = 'Payment plan beats a ' + discLabel + ' cash discount — present cost ' + fmtAED(pv) + ' vs ' + fmtAED(cashPrice) + ' cash (saves ' + fmtAED(cashPrice - pv) + ').';
+  } else if (pv <= price) {
     v.className = 'verdict warn';
-    v.textContent = 'Plan is cheaper than sticker in present terms, but a ' + discLabel + ' cash discount (' + fmtAED(cashPrice) + ') saves ' + fmtAED(npv - cashPrice) + ' more.';
+    v.textContent = 'Plan is cheaper than sticker in present terms, but a ' + discLabel + ' cash discount (' + fmtAED(cashPrice) + ') saves ' + fmtAED(pv - cashPrice) + ' more.';
   } else {
     v.className = 'verdict bad';
-    v.textContent = 'Plan costs more than sticker in present terms (' + fmtAED(npv) + ') — negotiate a discount or pay cash at ' + fmtAED(cashPrice) + '.';
+    v.textContent = 'Plan costs more than sticker in present terms (' + fmtAED(pv) + ') — negotiate a discount or pay cash at ' + fmtAED(cashPrice) + '.';
   }
 
   // IRR sensitivity: handover sale value from -20% to +30% in 5% steps
   const deltas = [];
   for (let d = -20; d <= 30; d += 5) deltas.push(d);
-  const irrPoints = deltas.map(d => irrAtValue(rows, constrMonths, price, paidByHandover, valueAtHandover * (1 + d / 100)));
+  // skip points where xirr has no finite solution instead of plotting them as 0%
+  const sens = deltas
+    .map(d => ({ d, irr: irrAtValue(rows, constrMonths, price, paidByHandover, valueAtHandover * (1 + d / 100)) }))
+    .filter(p => isFinite(p.irr));
   drawLine(document.getElementById('irrChart'), [{
     label: 'IRR at handover sale',
     color: SERIES_COLORS[1],
-    points: deltas.map((d, i) => [i, isFinite(irrPoints[i]) ? irrPoints[i] : 0])
+    points: sens.map((p, i) => [i, p.irr])
   }], {
-    xLabels: deltas.map(d => (d > 0 ? '+' : '') + d + '%'),
+    xLabels: sens.map(p => (p.d > 0 ? '+' : '') + p.d + '%'),
     yFmt: x => fmtPct(x)
   });
 }
@@ -148,8 +169,11 @@ function exportCsv() {
   };
   const lines = ['Date,Milestone,%,Amount (AED),Cumulative (AED)'];
   for (const r of lastRows) {
-    lines.push([r.date, r.label, r.pct.toFixed(1), Math.round(r.amount), Math.round(r.cum)].map(esc).join(','));
+    lines.push([r.date, r.label, r.pct.toFixed(2), Math.round(r.amount), Math.round(r.cum)].map(esc).join(','));
   }
+  const totPct = lastRows.reduce((s, r) => s + r.pct, 0);
+  const totAmt = lastRows.length ? lastRows[lastRows.length - 1].cum : 0;
+  lines.push(['', 'Total', totPct.toFixed(2), Math.round(totAmt), ''].map(esc).join(','));
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -161,6 +185,14 @@ function exportCsv() {
 }
 
 function init() {
+  // expected handover value defaults to price x 1.15; kept in sync with price
+  // until the user's first manual edit (dirty flag)
+  const hvEl = document.getElementById('handoverValue');
+  const syncHv = () => { if (!hvDirty) hvEl.value = Math.round(Math.max(0, numVal('price')) * 1.15); };
+  hvEl.addEventListener('input', () => { hvDirty = true; });
+  document.getElementById('price').addEventListener('input', syncHv);
+  document.getElementById('price').addEventListener('change', syncHv);
+
   const ids = ['price', 'bookingPct', 'constrMonths', 'milestoneFreq', 'planTemplate', 'customShare', 'phToggle', 'phMonths', 'handoverValue', 'discRate', 'cashDisc'];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -179,6 +211,7 @@ function init() {
   });
   document.getElementById('exportCsv').addEventListener('click', exportCsv);
 
+  syncHv(); // prefill the default expected handover value on first load
   render();
 }
 

@@ -17,7 +17,7 @@
 </header>
 <main class="container">
   <h1>Market Pulse</h1>
-  <p class="subtitle">Transaction volume, price per sqft trends and off-plan vs ready share across 12 Dubai communities.</p>
+  <p class="subtitle" id="subtitle">Transaction volume, price per sqft trends and off-plan vs ready share across 12 Dubai communities.</p>
 
   <div class="card">
     <div class="grid grid-2">
@@ -50,8 +50,9 @@
       <div class="stat"><div class="k">Transactions</div><div class="v" id="s-count">—</div></div>
       <div class="stat"><div class="k">Median AED / sqft</div><div class="v" id="s-ppsf">—</div></div>
       <div class="stat"><div class="k">Off-plan share</div><div class="v" id="s-offplan">—</div></div>
-      <div class="stat"><div class="k">Average ticket</div><div class="v" id="s-ticket">—</div></div>
+      <div class="stat"><div class="k">Median ticket</div><div class="v" id="s-ticket">—</div></div>
     </div>
+    <p class="note" id="data-through"></p>
     <div class="no-print" style="margin-top:12px;display:flex;gap:8px">
       <button class="btn ghost small" id="btn-export">Export CSV</button>
       <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
@@ -76,10 +77,11 @@
 
   <div class="grid grid-2">
     <div class="card">
-      <h2>Momentum — last 3 months vs first 3</h2>
+      <h2>Momentum — last 3 months vs previous 3</h2>
       <div class="stats">
         <div class="stat"><div class="k">Median ppsf change</div><div class="v" id="s-momentum">—</div></div>
-        <div class="stat"><div class="k">First 3 months</div><div class="v" id="s-mom-first">—</div></div>
+        <div class="stat"><div class="k">YoY change</div><div class="v" id="s-yoy">—</div></div>
+        <div class="stat"><div class="k">Previous 3 months</div><div class="v" id="s-mom-first">—</div></div>
         <div class="stat"><div class="k">Last 3 months</div><div class="v" id="s-mom-last">—</div></div>
       </div>
       <div class="grid grid-2">
@@ -98,7 +100,7 @@
           <tbody id="tbl-losers"></tbody>
         </table>
       </div>
-      <p class="note">Median AED / sqft of the last 3 dataset months vs the first 3. Stat follows all filters; community ranking follows type and bedrooms filters.</p>
+      <p class="note">Median AED / sqft of the last 3 dataset months vs the previous 3; YoY compares the last 3 months with the same 3 months a year earlier. Communities with fewer than 10 transactions in either 3-month window are excluded from the ranking. Stat follows all filters; community ranking follows type and bedrooms filters.</p>
     </div>
     <div class="card">
       <h2>Apartment vs villa mix</h2>

@@ -79,6 +79,7 @@
     <h2>Shared assumptions</h2>
     <div class="field"><label>Annual discount rate (%) — your client's cost of money</label><input id="discRate" type="number" value="8" step="0.5"></div>
     <div class="field"><label>Cash discount for full upfront payment (%)</label><input id="cashDisc" type="number" value="5" step="0.5" min="0"></div>
+    <div class="field"><label>Selling costs on flip (% of sale price — 2% agency + VAT + NOC)</label><input id="sellCost" type="number" value="2.5" step="0.1" min="0"></div>
     <div class="no-print" style="margin-top:12px">
       <button id="samePrice" class="btn ghost small" type="button">Same price: set B &amp; C to Project A's price</button>
     </div>
@@ -97,7 +98,7 @@
       <button id="exportCsv" class="btn ghost small" type="button">Export CSV</button>
       <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
     </div>
-    <p class="note">NPV discounts every payment back to today at the discount rate — later money costs less. IRR assumes the unit is sold at handover for the appreciated price, minus any balance still unpaid. Nominal total ignores timing entirely; portals show only that.</p>
+    <p class="note">NPV discounts every payment back to today at the discount rate — later money costs less. IRR assumes the unit is sold at handover for the appreciated price, less selling costs, with any unpaid post-handover balance netted at face value (not discounted). Nominal total ignores timing entirely; portals show only that.</p>
   </section>
 
   <section class="card">
@@ -108,6 +109,7 @@
   <section class="card">
     <h2>Cumulative cash over time</h2>
     <canvas id="cumChart" class="chart"></canvas>
+    <p class="note" style="text-align:center;margin-top:4px">x axis: months from booking</p>
     <p class="note">Cumulative amount paid by month from booking (month 0) to the end of the longest schedule. Flatter early curve = more cash preserved for other deals.</p>
   </section>
 </main>
