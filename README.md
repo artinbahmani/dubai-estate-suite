@@ -11,7 +11,7 @@ Thirteen tools, zero dependencies, no build step. Open `index.html` in a browser
 | 01 | Payment Plan Calculator | Models any off-plan structure (60/40, 70/30, 80/20, 50/50, custom, post-handover) — milestone schedule, cumulative cash, NPV and IRR vs a cash-discount purchase |
 | 02 | Payment Plan Comparator | Three projects side by side, ranked on real cost of money (NPV of payments) and flip IRR — not the static milestone tables portals show |
 | 03 | Closing Cost Calculator | Full buyer closing breakdown: DLD 4% + admin, trustee fee, agency fee + VAT, mortgage registration, valuation, NOC, conveyancing |
-| 04 | Golden Visa Checker | AED 2M property-route eligibility — combined properties, mortgaged units (bank NOC), off-plan 50/50 rule |
+| 04 | Golden Visa Checker | AED 2M property-route eligibility — combined properties, mortgaged units (bank NOC), off-plan at full DLD-certified value |
 | 05 | Commission Calculator | Off-plan (developer 3–7%), resale (2% + VAT, dual agency), rental (5% of annual rent) with agent/brokerage splits from 50/50 to 80/20 and income projection |
 | 06 | Rental Yield Analyzer | Gross vs net yield with service charges, vacancy and maintenance — plus a RERA rental-index increase-legality check (0/5/10/15/20% brackets) |
 | 07 | Off-Plan Flip Analyzer | Sell before handover: net cash out, ROI on cash deployed, annualized return, profit sensitivity to resale price |

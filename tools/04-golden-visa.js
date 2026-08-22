@@ -31,7 +31,7 @@ const STATUS = {
 };
 
 let nextId = 1;
-const rows = []; // { id, els: { wrap, price, paid, status, buildField, build, buildVal } }
+const rows = []; // { id, els: { wrap, name, price, paid, share, status } }
 
 const rowsEl = document.getElementById('rows');
 
@@ -69,10 +69,6 @@ function buildRow() {
         <input type="number" data-f="share" min="0" max="100" step="1" value="100">
       </div>
     </div>
-    <div class="field" data-f="buildField" style="display:none; margin-bottom:0">
-      <label>Construction completion: <span class="range-val" data-f="buildVal">50%</span></label>
-      <input type="range" data-f="build" min="0" max="100" step="1" value="50">
-    </div>
   `;
 
   const els = { wrap };
@@ -80,14 +76,10 @@ function buildRow() {
 
   els.remove = wrap.querySelector('.remove');
   els.remove.addEventListener('click', () => removeRow(id));
-  for (const key of ['name', 'price', 'paid', 'share', 'build']) {
+  for (const key of ['name', 'price', 'paid', 'share']) {
     els[key].addEventListener('input', render);
   }
-  els.status.addEventListener('change', () => {
-    // completion slider is informational only, shown for off-plan
-    els.buildField.style.display = els.status.value === 'offplan' ? '' : 'none';
-    render();
-  });
+  els.status.addEventListener('change', render);
 
   rowsEl.appendChild(wrap);
   return { id, els };
@@ -102,8 +94,6 @@ function addRow(saved, doRender = true) {
     r.els.price.value = saved.price ?? '';
     r.els.paid.value = saved.paid ?? '';
     r.els.share.value = saved.share ?? 100;
-    r.els.build.value = saved.build ?? 50;
-    r.els.buildField.style.display = r.els.status.value === 'offplan' ? '' : 'none';
   }
   rows.push(r);
   if (doRender) render();
@@ -127,7 +117,6 @@ function saveState() {
       price: r.els.price.value,
       paid: r.els.paid.value,
       share: r.els.share.value,
-      build: r.els.build.value,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
     localStorage.setItem(BUDGET_KEY, document.getElementById('extraBudget').value);
@@ -194,9 +183,6 @@ function assess(r) {
 // ---- render ----
 
 function render() {
-  // slider value labels
-  for (const r of rows) r.els.buildVal.textContent = fmtNum(numVal(r.els.build), 0) + '%';
-
   const results = rows.map(r => ({ r, ...assess(r) }));
   const total = results.reduce((s, x) => s + x.counted, 0);
   const gap = THRESHOLD - total;
