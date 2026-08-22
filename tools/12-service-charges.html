@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Charge Index — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="../data/service-charges.js"></script>
+<script src="12-service-charges.js" defer></script>
+<style>
+  .gold { color: var(--gold); font-weight: 700; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">12 · Service Charge Index</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Service Charge Index</h1>
+  <p class="subtitle">Searchable reference of annual service charges by community and segment, with a cost estimator and side-by-side comparison.</p>
+
+  <div class="verdict warn">Sample indicative data only. Service charges are set per building and unit — always confirm the exact rate on the RERA Service Charge Index (Mollak) before quoting a client.</div>
+
+  <section class="card" style="margin-top:20px;">
+    <h2>Community reference</h2>
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="search">Search community</label>
+        <input type="text" id="search" placeholder="e.g. marina, hills, palm…">
+      </div>
+      <div class="field">
+        <label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="typDesc" selected>Typical charge — high to low</option>
+          <option value="typAsc">Typical charge — low to high</option>
+          <option value="alpha">Alphabetical</option>
+        </select>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Community</th>
+          <th>Segment</th>
+          <th class="num">Low</th>
+          <th class="num">Typical</th>
+          <th class="num">High</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <p class="note" id="listNote">—</p>
+  </section>
+
+  <section class="card">
+    <h2>Estimate your cost</h2>
+    <div class="grid grid-2">
+      <div>
+        <div class="field">
+          <label for="estCommunity">Community</label>
+          <select id="estCommunity"></select>
+        </div>
+        <div class="field">
+          <label for="estSegment">Segment</label>
+          <select id="estSegment"></select>
+        </div>
+        <div class="field">
+          <label for="estSqft">Property size (sqft)</label>
+          <input type="number" id="estSqft" value="900" min="0" step="10">
+        </div>
+      </div>
+      <div>
+        <div class="stats">
+          <div class="stat"><div class="k">Yearly at low</div><div class="v" id="sLow">—</div></div>
+          <div class="stat"><div class="k">Yearly at typical</div><div class="v" id="sTyp">—</div></div>
+          <div class="stat"><div class="k">Yearly at high</div><div class="v" id="sHigh">—</div></div>
+          <div class="stat"><div class="k">Monthly (typical)</div><div class="v" id="sMonthly">—</div></div>
+        </div>
+        <p class="note" id="estNote">—</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Compare communities</h2>
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="cmp1">Community 1</label>
+        <select id="cmp1"></select>
+      </div>
+      <div class="field">
+        <label for="cmp2">Community 2</label>
+        <select id="cmp2"></select>
+      </div>
+    </div>
+    <div class="grid grid-2">
+      <div class="field">
+        <label for="cmp3">Community 3</label>
+        <select id="cmp3"></select>
+      </div>
+    </div>
+    <canvas class="chart" id="cmpChart"></canvas>
+    <p class="note">Typical AED per sqft per year for the selected community and segment. Duplicate selections are ignored.</p>
+  </section>
+</main>
+<footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against the RERA Service Charge Index (Mollak) before client use</footer>
+</body>
+</html>

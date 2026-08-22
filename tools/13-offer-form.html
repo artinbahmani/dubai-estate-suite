@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offer Letter / Form F Generator — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="13-offer-form.js" defer></script>
+<style>
+/* Printable offer document — paper look on screen, black-on-white in print */
+#offerDoc {
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  padding: 36px 40px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+}
+#offerDoc .doc-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+#offerDoc .doc-sub {
+  text-align: center;
+  color: #666;
+  font-size: 12px;
+  margin: 4px 0 22px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+#offerDoc h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8a6d1c;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+  margin: 18px 0 8px;
+}
+#offerDoc .doc-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 4px 0;
+  border-bottom: 1px dotted #e3e3e3;
+}
+#offerDoc .doc-row[hidden] { display: none; }
+#offerDoc .doc-k { color: #555; }
+#offerDoc .doc-v { text-align: right; font-weight: 600; }
+#offerDoc .doc-row.total .doc-k,
+#offerDoc .doc-row.total .doc-v { font-weight: 700; color: #111; }
+#offerDoc .doc-clause { font-style: italic; font-weight: 400; }
+#offerDoc .doc-disclaimer {
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+  font-size: 11px;
+  color: #777;
+  font-style: italic;
+  text-align: center;
+}
+@media print {
+  body { background: #fff; }
+  .no-print, .topbar, .footer { display: none !important; }
+  .container { max-width: none; padding: 0; }
+  #summaryCard { background: #fff; border: none; padding: 0; margin: 0; }
+  #offerDoc { box-shadow: none; border-radius: 0; padding: 0; }
+  @page { size: A4; margin: 16mm; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">13 · Offer Letter / Form F Generator</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1 class="no-print">Offer Letter / Form F Generator</h1>
+  <p class="subtitle no-print">Fill in the deal terms and get a clean, printable one-page offer summary to present alongside the official RERA Form F.</p>
+
+  <div class="grid grid-2">
+    <section class="card no-print">
+      <h2>Property</h2>
+      <div class="field">
+        <label for="community">Community</label>
+        <input type="text" id="community" placeholder="e.g. Dubai Marina">
+      </div>
+      <div class="field">
+        <label for="building">Building / project</label>
+        <input type="text" id="building" placeholder="e.g. Marina Gate Tower 2">
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="unitNo">Unit no</label>
+          <input type="text" id="unitNo" placeholder="e.g. 1804">
+        </div>
+        <div class="field">
+          <label for="beds">Bedrooms</label>
+          <select id="beds">
+            <option>Studio</option>
+            <option selected>1 bedroom</option>
+            <option>2 bedrooms</option>
+            <option>3 bedrooms</option>
+            <option>4 bedrooms</option>
+            <option>5+ bedrooms</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="sqft">Size (sqft)</label>
+          <input type="number" id="sqft" min="0" step="10" placeholder="e.g. 950">
+        </div>
+        <div class="field">
+          <label for="permit">DLD permit no (optional)</label>
+          <input type="text" id="permit" placeholder="e.g. 1234567890">
+        </div>
+      </div>
+    </section>
+
+    <section class="card no-print">
+      <h2>Deal</h2>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="price">Agreed price (AED)</label>
+          <input type="number" id="price" value="2000000" min="0" step="10000">
+        </div>
+        <div class="field">
+          <label for="depPct">Deposit cheque (%)</label>
+          <input type="number" id="depPct" value="10" min="0" max="100" step="0.5">
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="payMethod">Payment method</label>
+          <select id="payMethod">
+            <option value="cash" selected>Cash</option>
+            <option value="mortgage">Mortgage</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="transferDate">Expected transfer date</label>
+          <input type="date" id="transferDate">
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="bCommPct">Buyer pays commission (%)</label>
+          <input type="number" id="bCommPct" value="2" min="0" max="10" step="0.25">
+        </div>
+        <div class="field">
+          <label for="sCommPct">Seller pays commission (%)</label>
+          <input type="number" id="sCommPct" value="2" min="0" max="10" step="0.25">
+        </div>
+      </div>
+      <p class="note">5% VAT applies to agency commission and is added automatically in the summary. The deposit cheque is held by the buyer's agency and credited against the price at transfer.</p>
+    </section>
+  </div>
+
+  <div class="grid grid-2">
+    <section class="card no-print">
+      <h2>Buyer &amp; buyer's agency</h2>
+      <div class="field">
+        <label for="buyerName">Buyer full name</label>
+        <input type="text" id="buyerName" placeholder="As per passport">
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="buyerNat">Nationality</label>
+          <input type="text" id="buyerNat">
+        </div>
+        <div class="field">
+          <label for="buyerPassport">Passport no</label>
+          <input type="text" id="buyerPassport">
+        </div>
+      </div>
+      <div class="field">
+        <label for="buyerAgency">Buyer's agency</label>
+        <input type="text" id="buyerAgency">
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="buyerAgent">Agent name</label>
+          <input type="text" id="buyerAgent">
+        </div>
+        <div class="field">
+          <label for="buyerOrn">ORN / BRN</label>
+          <input type="text" id="buyerOrn" placeholder="e.g. ORN 1234 / BRN 56789">
+        </div>
+      </div>
+    </section>
+
+    <section class="card no-print">
+      <h2>Seller &amp; seller's agency</h2>
+      <div class="field">
+        <label for="sellerName">Seller full name</label>
+        <input type="text" id="sellerName" placeholder="As per title deed">
+      </div>
+      <div class="field">
+        <label for="sellerAgency">Seller's agency</label>
+        <input type="text" id="sellerAgency">
+      </div>
+      <div class="field">
+        <label for="sellerAgent">Agent name</label>
+        <input type="text" id="sellerAgent">
+      </div>
+    </section>
+  </div>
+
+  <section class="card no-print">
+    <h2>Terms</h2>
+    <div class="grid grid-2">
+      <div>
+        <div class="field">
+          <label style="text-transform:none; letter-spacing:0;">
+            <input type="checkbox" id="incFurnished" style="width:auto; margin-right:6px;">
+            Furnished
+          </label>
+          <label style="text-transform:none; letter-spacing:0;">
+            <input type="checkbox" id="incWhiteGoods" style="width:auto; margin-right:6px;">
+            White goods included
+          </label>
+          <label style="text-transform:none; letter-spacing:0;">
+            <input type="checkbox" id="incParking" style="width:auto; margin-right:6px;">
+            Parking included
+          </label>
+          <label style="text-transform:none; letter-spacing:0;">
+            <input type="checkbox" id="incStorage" style="width:auto; margin-right:6px;">
+            Storage included
+          </label>
+        </div>
+        <div class="field">
+          <label style="text-transform:none; letter-spacing:0;">
+            <input type="checkbox" id="vacant" style="width:auto; margin-right:6px;">
+            Vacant on transfer
+          </label>
+        </div>
+      </div>
+      <div class="field">
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="subMortgage" style="width:auto; margin-right:6px;">
+          Subject to mortgage approval
+        </label>
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="subValuation" style="width:auto; margin-right:6px;">
+          Subject to valuation
+        </label>
+        <label style="text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="subNoc" style="width:auto; margin-right:6px;">
+          Subject to NOC from developer
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="summaryCard">
+    <h2 class="no-print">Offer summary — live preview</h2>
+    <div id="offerDoc">
+      <div class="doc-title">Offer to Purchase — Dubai</div>
+      <div class="doc-sub">Summary of terms offered by the buyer to the seller</div>
+
+      <h3>Property</h3>
+      <div class="doc-row"><span class="doc-k">Community</span><span class="doc-v" id="oCommunity">—</span></div>
+      <div class="doc-row"><span class="doc-k">Building / project</span><span class="doc-v" id="oBuilding">—</span></div>
+      <div class="doc-row"><span class="doc-k">Unit no</span><span class="doc-v" id="oUnit">—</span></div>
+      <div class="doc-row"><span class="doc-k">Bedrooms</span><span class="doc-v" id="oBeds">—</span></div>
+      <div class="doc-row"><span class="doc-k">Size</span><span class="doc-v" id="oSqft">—</span></div>
+      <div class="doc-row"><span class="doc-k">DLD permit no</span><span class="doc-v" id="oPermit">—</span></div>
+
+      <h3>Parties</h3>
+      <div class="doc-row"><span class="doc-k">Buyer</span><span class="doc-v" id="oBuyerName">—</span></div>
+      <div class="doc-row"><span class="doc-k">Buyer nationality</span><span class="doc-v" id="oBuyerNat">—</span></div>
+      <div class="doc-row"><span class="doc-k">Buyer passport no</span><span class="doc-v" id="oBuyerPassport">—</span></div>
+      <div class="doc-row"><span class="doc-k">Seller</span><span class="doc-v" id="oSellerName">—</span></div>
+      <div class="doc-row"><span class="doc-k">Buyer's agency</span><span class="doc-v" id="oBuyerAgency">—</span></div>
+      <div class="doc-row"><span class="doc-k">Buyer's agent</span><span class="doc-v" id="oBuyerAgent">—</span></div>
+      <div class="doc-row"><span class="doc-k">ORN / BRN</span><span class="doc-v" id="oBuyerOrn">—</span></div>
+      <div class="doc-row"><span class="doc-k">Seller's agency</span><span class="doc-v" id="oSellerAgency">—</span></div>
+      <div class="doc-row"><span class="doc-k">Seller's agent</span><span class="doc-v" id="oSellerAgent">—</span></div>
+
+      <h3>Deal &amp; financials</h3>
+      <div class="doc-row"><span class="doc-k">Agreed price</span><span class="doc-v" id="oPrice">—</span></div>
+      <div class="doc-row"><span class="doc-k" id="oDepositK">Deposit cheque</span><span class="doc-v" id="oDeposit">—</span></div>
+      <div class="doc-row total"><span class="doc-k">Balance due at transfer</span><span class="doc-v" id="oBalance">—</span></div>
+      <div class="doc-row"><span class="doc-k">Payment method</span><span class="doc-v" id="oPayMethod">—</span></div>
+      <div class="doc-row" id="oMortgageRow" hidden><span class="doc-k">Financing condition</span><span class="doc-v doc-clause">Subject to final bank approval of the buyer's mortgage.</span></div>
+      <div class="doc-row"><span class="doc-k">Expected transfer date</span><span class="doc-v" id="oTransferDate">—</span></div>
+      <div class="doc-row"><span class="doc-k" id="oBuyerCommK">Buyer agency commission</span><span class="doc-v" id="oBuyerComm">—</span></div>
+      <div class="doc-row"><span class="doc-k" id="oSellerCommK">Seller agency commission</span><span class="doc-v" id="oSellerComm">—</span></div>
+
+      <h3>Terms</h3>
+      <div class="doc-row"><span class="doc-k">Included items</span><span class="doc-v" id="oIncluded">—</span></div>
+      <div class="doc-row"><span class="doc-k">Vacant on transfer</span><span class="doc-v" id="oVacant">—</span></div>
+      <div class="doc-row"><span class="doc-k">Subject to</span><span class="doc-v" id="oSubjects">—</span></div>
+
+      <div class="doc-disclaimer">This is a summary of terms prepared by the agent. It is not a substitute for the official RERA Form F / MOU, which must be signed through a registered broker.</div>
+    </div>
+    <div class="no-print" style="margin-top:14px;">
+      <button class="btn" id="printBtn">Print / Save as PDF</button>
+    </div>
+  </section>
+</main>
+<footer class="footer">Dubai Estate Suite · sample dataset for demonstration · verify figures against DLD before client use</footer>
+</body>
+</html>

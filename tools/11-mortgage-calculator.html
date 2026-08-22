@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mortgage &amp; Affordability — Dubai Estate Suite</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/shared.js"></script>
+<script src="11-mortgage-calculator.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">DUBAI ESTATE SUITE</span>
+  <span class="crumb">11 · Mortgage &amp; Affordability</span>
+  <a class="back" href="../index.html">Back to all tools</a>
+</header>
+<main class="container">
+  <h1>Mortgage &amp; Affordability Calculator</h1>
+  <p class="subtitle">UAE Central Bank LTV caps and the 50% debt-burden ratio, applied to find the maximum loan, the binding constraint and the price your buyer can actually afford.</p>
+
+  <div class="grid grid-2">
+    <section class="card">
+      <h2>Buyer profile</h2>
+      <div class="field">
+        <label for="buyerType">Buyer type</label>
+        <select id="buyerType">
+          <option value="national">UAE National</option>
+          <option value="expat" selected>Expat Resident</option>
+          <option value="nonresident">Non-Resident</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="propStatus">Property status</label>
+        <select id="propStatus">
+          <option value="ready" selected>Ready</option>
+          <option value="offplan">Off-plan</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="firstProp">Property count</label>
+        <select id="firstProp">
+          <option value="first" selected>First property</option>
+          <option value="additional">Additional property</option>
+        </select>
+      </div>
+      <p class="note" id="offplanNote" hidden>Off-plan purchases are capped at 50% LTV regardless of buyer type or property count — this overrides the tiers above.</p>
+      <p class="note">CBUAE caps: UAE National first home 85% (≤ AED 5M) / 75% above; Expat resident first home 80% (≤ AED 5M) / 70% above; additional property 60%; non-resident 50%. Total monthly debt — new mortgage payment plus existing obligations — must stay within 50% of gross monthly income.</p>
+    </section>
+
+    <section class="card">
+      <h2>Finances</h2>
+      <div class="field">
+        <label for="salary">Gross monthly salary (AED)</label>
+        <input type="number" id="salary" value="40000" min="0" step="1000">
+      </div>
+      <div class="field">
+        <label for="otherIncome">Other monthly income (AED)</label>
+        <input type="number" id="otherIncome" value="0" min="0" step="500">
+      </div>
+      <div class="field">
+        <label for="debts">Existing monthly debt obligations (AED)</label>
+        <input type="number" id="debts" value="5000" min="0" step="500">
+      </div>
+      <p class="note">Car loans, personal loans, credit-card minimums — anything the bank already counts in the debt-burden ratio.</p>
+    </section>
+  </div>
+
+  <div class="grid grid-2">
+    <section class="card">
+      <h2>Loan</h2>
+      <div class="field">
+        <label for="price">Property price (AED)</label>
+        <input type="number" id="price" value="2000000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label for="rate">Interest rate (% / yr)</label>
+        <input type="number" id="rate" value="4.99" min="0" max="30" step="0.01">
+      </div>
+      <div class="field">
+        <label for="years">Term (years)</label>
+        <input type="number" id="years" value="25" min="1" max="25" step="1">
+      </div>
+      <p class="note">Maximum loan is the lower of the LTV cap on the price and the loan the income can service at this rate and term.</p>
+    </section>
+
+    <section class="card">
+      <h2>Bank &amp; registration costs</h2>
+      <div class="field">
+        <label for="feeArrPct">Bank arrangement fee (% of loan)</label>
+        <input type="number" id="feeArrPct" value="1" min="0" max="3" step="0.05">
+      </div>
+      <div class="field">
+        <label for="feeValuation">Valuation fee (AED)</label>
+        <input type="number" id="feeValuation" value="3000" min="0" step="250">
+      </div>
+      <p class="note">Mortgage registration is 0.25% of the loan amount plus AED 290, payable to the Dubai Land Department. Lenders also require life insurance (mortgage protection), typically ~0.4–0.5% per year of the outstanding balance — often quoted as a monthly premium on top of the payment.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Borrowing capacity</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Maximum loan</div><div class="v" id="sMaxLoan">—</div></div>
+      <div class="stat"><div class="k">Monthly payment</div><div class="v" id="sPayment">—</div></div>
+      <div class="stat"><div class="k">Down payment</div><div class="v" id="sDown">—</div></div>
+      <div class="stat"><div class="k">LTV cap applied</div><div class="v" id="sLtvCap">—</div></div>
+      <div class="stat"><div class="k">Binding constraint</div><div class="v" id="sBinding">—</div></div>
+      <div class="stat"><div class="k">DBR after mortgage</div><div class="v" id="sDbr">—</div></div>
+    </div>
+    <div class="verdict bad" id="dbrWarning" hidden>No borrowing capacity — DBR already exceeded. Existing obligations alone are at or above 50% of gross monthly income.</div>
+  </section>
+
+  <section class="card">
+    <h2>Affordability</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Max property price you can afford</div><div class="v" id="sAfford">—</div></div>
+      <div class="stat"><div class="k">Max payment allowed by DBR</div><div class="v" id="sMaxPay">—</div></div>
+      <div class="stat"><div class="k">Max loan by income (DBR)</div><div class="v" id="sLoanDbr">—</div></div>
+    </div>
+    <p class="note">Reverse affordability: the largest price at which the income-driven maximum loan still fits inside the LTV cap (DBR loan ÷ LTV cap). Above this price the required down payment grows faster than the loan.</p>
+  </section>
+
+  <section class="card">
+    <h2>Upfront cash required</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Down payment</div><div class="v" id="cDown">—</div></div>
+      <div class="stat"><div class="k">Arrangement fee</div><div class="v" id="cArr">—</div></div>
+      <div class="stat"><div class="k">Valuation fee</div><div class="v" id="cVal">—</div></div>
+      <div class="stat"><div class="k">Mortgage registration</div><div class="v" id="cReg">—</div></div>
+      <div class="stat"><div class="k">Total cash at purchase</div><div class="v" id="cTotal">—</div></div>
+    </div>
+    <p class="note">Down payment plus bank and registration costs. Purchase-side fees (DLD 4%, agency, trustee) are covered in the Closing Cost Calculator.</p>
+  </section>
+
+  <section class="card">
+    <h2>Amortization</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Total interest over term</div><div class="v" id="sInterest">—</div></div>
+      <div class="stat"><div class="k">Balance after 5 years</div><div class="v" id="sBal5">—</div></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <table style="margin-top:16px;">
+      <thead>
+        <tr><th>Year</th><th class="num">Principal paid</th><th class="num">Interest paid</th><th class="num">Ending balance</th></tr>
+      </thead>
+      <tbody id="amortBody"></tbody>
+    </table>
+  </section>
+
+  <div class="no-print" style="margin-bottom:20px;">
+    <button class="btn ghost small no-print" onclick="window.print()">Print / PDF</button>
+  </div>
+</main>
+<footer class="footer">Dubai Estate Suite · indicative figures — final terms depend on lender approval · verify CBUAE caps before client use</footer>
+</body>
+</html>

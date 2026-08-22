@@ -2,7 +2,7 @@
 
 A client-side toolkit for Dubai real estate agents covering the three segments that actually make up a Dubai book: **off-plan**, **secondary (resale)** and **rentals**.
 
-Ten tools, zero dependencies, no build step. Open `index.html` in a browser and everything works — including over `file://`.
+Thirteen tools, zero dependencies, no build step. Open `index.html` in a browser and everything works — including over `file://`.
 
 ## Tools
 
@@ -18,6 +18,9 @@ Ten tools, zero dependencies, no build step. Open `index.html` in a browser and 
 | 08 | Market Pulse | Transaction volume, median AED/sqft trends and off-plan share across 12 Dubai communities |
 | 09 | Instant CMA | Comparative market analysis from transaction records — comps, median pricing, 25th–75th range, scatter view |
 | 10 | Currency-Adjusted Returns | What a Dubai investment actually returned in the client's home currency (EUR, GBP, INR, RUB, CNY) vs the AED headline |
+| 11 | Mortgage & Affordability | UAE LTV tiers and the 50% DBR cap — max affordable price, monthly payment and full amortization schedule |
+| 12 | Service Charge Guide | Searchable AED/sqft ranges per community, with a yearly cost estimator by unit size |
+| 13 | Offer / Form F Generator | Printable offer summary with price, deposits, commission and terms — ready for client signature |
 
 ## Structure
 
@@ -25,14 +28,14 @@ Ten tools, zero dependencies, no build step. Open `index.html` in a browser and 
 index.html            launcher
 assets/style.css      shared design system
 assets/shared.js      formatting, XIRR/NPV, canvas charts (line / bars / donut / scatter)
-data/                 sample datasets (DLD-open-data-shaped transactions, rental index, FX)
+data/                 sample datasets (DLD-open-data-shaped transactions, rental index, FX, service charges)
 scripts/gen-data.js   regenerates the sample datasets
-tools/NN-*.html|.js   the ten tools
+tools/NN-*.html|.js   the thirteen tools
 ```
 
 ## Data
 
-`data/` ships with a **sample dataset** shaped like DLD open data (24 months of transactions across 12 communities, a RERA-style rental index, yearly FX averages). It exists so every tool is demonstrable offline. Swap in real DLD open-data exports to go live — the generator script documents the shape.
+`data/` ships with a **sample dataset** shaped like DLD open data (24 months of transactions across 12 communities, a RERA-style rental index, yearly FX averages, indicative service-charge ranges). It exists so every tool is demonstrable offline. Swap in real DLD open-data exports to go live — the generator script documents the shape.
 
 Figures like the 4% DLD fee, 2% agency commission and Golden Visa threshold reflect published rules as of mid-2026 — always verify against DLD/RERA before client use.
 
