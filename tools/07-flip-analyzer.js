@@ -14,8 +14,26 @@ const DEV_NAMES = { emaar: 'Emaar', damac: 'DAMAC', nakheel: 'Nakheel', sobha: '
 // settles it — only the flow of funds differs (shown in the breakdown).
 function closingAt(resale, outstanding, vatOn, noc, assignFee) {
   const agency = resale * AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
-  const costs = agency + noc + assignFee;
-  return { agency, costs, net: resale - outstanding - costs };
+  const nocGross = noc * (1 + VAT_RATE); // 5% VAT always applies on the NOC fee
+  const costs = agency + nocGross + assignFee;
+  return { agency, noc: nocGross, costs, net: resale - outstanding - costs };
+}
+
+// rows captured on each render for the CSV export
+let lastRows = [];
+
+function csvCell(x) {
+  const s = String(x);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportCSV() {
+  const csv = lastRows.map(r => r.map(csvCell).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'flip-analysis.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function setStat(id, text, cls) {
@@ -72,7 +90,7 @@ function render() {
   const pctRaw = numVal('inPctPaid');
   const months = numVal('inMonths');
   const resale = numVal('inResale');
-  const noc = numVal('inNoc');
+  const noc = Math.max(0, numVal('inNoc'));
   const assignPct = numVal('inAssignPct');
   const benchmark = numOr('inBenchmark', 15) / 100;
   const vatOn = document.getElementById('inVat').checked;
@@ -105,7 +123,7 @@ function render() {
 
   // resale price where proceeds exactly cover costs + cash in (zero profit)
   const feeRate = AGENCY_FEE_RATE * (vatOn ? 1 + VAT_RATE : 1);
-  const breakeven = (invested + outstanding + noc + assignFee) / (1 - feeRate);
+  const breakeven = (invested + outstanding + c.noc + assignFee) / (1 - feeRate);
 
   setStat('oCash', fmtAED(invested));
   setStat('oOutstanding', fmtAED(outstanding));
@@ -120,11 +138,9 @@ function render() {
   // verdict on annualized return
   const problem = dealProblem(price, invested, months);
   const v = document.getElementById('oVerdict');
-  if (!isFinite(annRoi)) {
+  if (problem) {
     v.className = 'verdict warn';
-    v.textContent = problem
-      ? 'Cannot assess the flip — ' + problem + '.'
-      : 'Enter a valid deal to assess the flip.';
+    v.textContent = 'Cannot assess the flip — ' + problem + '.';
   } else if (annRoi > benchmark) {
     v.className = 'verdict ok';
     v.textContent = 'Strong flip — annualized ROI of ' + fmtPct(annRoi) + ' clears the ' + fmtPct(benchmark, 0) + ' bar.';
@@ -132,6 +148,7 @@ function render() {
     v.className = 'verdict warn';
     v.textContent = 'Marginal — ' + fmtPct(annRoi) + ' annualized; holding may compound better.';
   } else {
+    // also catches annRoi NaN from roi <= -1: loss exceeds the cash invested
     v.className = 'verdict bad';
     v.textContent = 'Do not sell — this resale price locks in a loss of ' + fmtAED(Math.abs(profit)) + '.';
   }
@@ -157,7 +174,7 @@ function render() {
   }
   rows.push(['Agency fee 2%' + (vatOn ? ' + 5% VAT' : ''), -c.agency]);
   rows.push(['Developer assignment fee (' + assignPct + '% of launch price)', -assignFee]);
-  rows.push(['Developer NOC fee', -noc]);
+  rows.push(['Developer NOC fee (+ 5% VAT)', -c.noc]);
   document.getElementById('oBreakdown').innerHTML =
     rows.map(([label, amt]) =>
       '<tr><td>' + label + '</td><td class="num">' + fmtAED(amt) + '</td></tr>'
@@ -165,6 +182,21 @@ function render() {
     '<tr><td><strong>Net cash to you at closing</strong></td><td class="num"><strong>' + fmtAED(c.net) + '</strong></td></tr>' +
     '<tr><td>Less: cash invested so far</td><td class="num">' + fmtAED(-invested) + '</td></tr>' +
     '<tr><td><strong>Profit</strong></td><td class="num"><strong>' + fmtAED(profit) + '</strong></td></tr>';
+
+  // capture headline figures for the CSV export
+  lastRows = [
+    ['Launch price (AED)', Math.round(price)],
+    ['Paid to developer so far (%)', Math.min(Math.max(pctRaw, 0), 100)],
+    ['Months held', months],
+    ['Expected resale price (AED)', Math.round(resale)],
+    ...rows.map(([label, amt]) => [label, Math.round(amt)]),
+    ['Net cash to you at closing (AED)', Math.round(c.net)],
+    ['Profit (AED)', Math.round(profit)],
+    ['ROI on cash invested', fmtPct(roi)],
+    ['Annualized ROI', fmtPct(annRoi)],
+    ['XIRR (staged payments)', fmtPct(flipXirr)],
+    ['Break-even resale price (AED)', Math.round(breakeven)],
+  ];
 
   // flip vs hold — hold pays the plan to 100%, rents out, then sells at the entered sale value
   const holdValue = numOr('inHoldValue', resale * 1.1);
@@ -206,11 +238,13 @@ function render() {
   ).join('');
 
   const hv = document.getElementById('oHoldVerdict');
-  if (!isFinite(annRoi) || !isFinite(holdAnnRoi)) {
+  if (problem) {
     hv.className = 'verdict warn';
-    hv.textContent = problem
-      ? 'Cannot compare flipping vs holding — ' + problem + '.'
-      : 'Enter a valid deal to compare flipping vs holding.';
+    hv.textContent = 'Cannot compare flipping vs holding — ' + problem + '.';
+  } else if (!isFinite(annRoi) || !isFinite(holdAnnRoi)) {
+    // NaN here means a loss exceeding the cash deployed on that side
+    hv.className = 'verdict warn';
+    hv.textContent = 'Cannot compare — one side loses more than the cash deployed, so its annualized return is undefined.';
   } else if (holdAnnRoi > annRoi) {
     hv.className = 'verdict ok';
     hv.textContent = 'Hold wins — ' + fmtPct(holdAnnRoi) + ' annualized vs ' + fmtPct(annRoi) + ' if you flip now, on ' + fmtAED(holdDeployed) + ' deployed instead of ' + fmtAED(invested) + '.';
@@ -254,4 +288,5 @@ document.querySelectorAll('input, select').forEach(el => {
   el.addEventListener('input', render);
   el.addEventListener('change', render);
 });
+document.getElementById('btnCsv').addEventListener('click', exportCSV);
 render();

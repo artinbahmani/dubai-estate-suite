@@ -13,6 +13,11 @@ function dash(s) {
   return s ? s : '—';
 }
 
+// numeric input clamped to [0, 100] — the min/max attributes don't stop typing
+function pctVal(id) {
+  return Math.min(100, Math.max(0, numVal(id)));
+}
+
 // 'YYYY-MM-DD' -> '13 August 2026' (local-time parse, no timezone shift)
 function fmtDate(str) {
   if (!str) return '—';
@@ -58,12 +63,15 @@ function render() {
 
   // deal & financials
   const price = numVal('price');
-  const depPct = numVal('depPct');
-  const bPct = numVal('bCommPct');
-  const sPct = numVal('sCommPct');
+  const depPct = pctVal('depPct');
+  const bPct = pctVal('bCommPct');
+  const sPct = pctVal('sCommPct');
   const hasPrice = price > 0;
 
   document.getElementById('oPrice').textContent = hasPrice ? fmtAED(price) : '—';
+  const showPsf = hasPrice && sqft > 0;
+  document.getElementById('oPsfRow').hidden = !showPsf;
+  if (showPsf) document.getElementById('oPsf').textContent = fmtAED(price / sqft) + ' / sqft';
 
   const deposit = price * depPct / 100;
   document.getElementById('oDepositK').textContent = 'Deposit cheque (' + fmtNum(depPct) + '%)';

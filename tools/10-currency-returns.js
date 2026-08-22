@@ -37,10 +37,13 @@ function totalReturnIn(ccy, price, curVal, rentPerYear, pi) {
   return purchaseHome > 0 ? endHome / purchaseHome - 1 : NaN;
 }
 
+// latest year-by-year table contents, for CSV export
+let lastTable = { ccy: '', holdYears: 0, rows: [], rentTotal: 0, rentHome: 0 };
+
 function render() {
   const ccy = strVal('cur');
   const pYear = Number(strVal('pYear'));
-  const price = numVal('price');
+  const price = Math.max(0, numVal('price'));
   const curVal = Math.max(0, numVal('curVal'));
   const rentPerYear = Math.max(0, numVal('rent'));
 
@@ -116,12 +119,14 @@ function render() {
   // rent counts only for years AFTER the purchase year (holdYears years total)
   const points = [];
   const rows = [];
+  lastTable = { ccy, holdYears, rows: [], rentTotal, rentHome };
   for (let yi = pi; yi <= LAST; yi++) {
     const t = LAST === pi ? 0 : (yi - pi) / (LAST - pi);
     const aedVal = price + (curVal - price) * t;
     const homeVal = toHome(aedVal, ccy, yi);
     const rentYr = yi > pi ? toHome(rentPerYear, ccy, yi) : 0;
     points.push([FX_DATA.years[yi], homeVal]);
+    lastTable.rows.push([FX_DATA.years[yi], Math.round(aedVal), rate[yi], Math.round(homeVal), Math.round(rentYr)]);
     rows.push('<tr><td>' + FX_DATA.years[yi] + '</td>' +
       '<td class="num">' + fmtAED(aedVal) + '</td>' +
       '<td class="num">' + fmtNum(rate[yi], 4) + '</td>' +
@@ -222,9 +227,35 @@ function renderForward(ccy, curVal) {
   });
 }
 
+// ---- CSV export ----
+
+function csvCell(v) {
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportCsv() {
+  const { ccy, holdYears, rows, rentTotal, rentHome } = lastTable;
+  if (!rows.length) return;
+  const lines = [['Year', 'AED value', ccy + ' per USD', ccy + ' value', 'Rent (' + ccy + ')'].map(csvCell).join(',')];
+  for (const r of rows) lines.push(r.map(csvCell).join(','));
+  lines.push(['Total rent, ' + holdYears + ' yrs', Math.round(rentTotal), '', '', Math.round(rentHome)].map(csvCell).join(','));
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  // currency-returns-<ccy>-<yyyymmdd>.csv
+  const d = new Date();
+  const p2 = n => String(n).padStart(2, '0');
+  a.download = 'currency-returns-' + ccy.toLowerCase() + '-' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
 // purchase-year options: every year except the latest (need at least 1 year of holding)
 const pYearSel = document.getElementById('pYear');
-FX_DATA.years.slice(0, -1).forEach(y => {
+FX_DATA.years.filter(y => y !== FX_DATA.years[LAST]).forEach(y => {
   const opt = document.createElement('option');
   opt.value = y;
   opt.textContent = y;
@@ -238,4 +269,5 @@ pYearSel.value = FX_DATA.years[0];
   el.addEventListener('change', render);
 });
 window.addEventListener('resize', render);
+document.getElementById('exportCsv').addEventListener('click', exportCsv);
 render();

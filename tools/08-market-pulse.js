@@ -93,7 +93,9 @@ function render() {
   document.getElementById('s-ppsf').textContent = fmtNum(median(filtered.map(r => r.ppsf)));
   document.getElementById('s-offplan').textContent = filtered.length ? fmtPct(offplanCount / filtered.length) : '—';
   document.getElementById('s-ticket').textContent = fmtAED(medTicket);
-  document.getElementById('s-value').textContent = fmtCompact(filtered.reduce((s, r) => s + r.price, 0));
+  document.getElementById('s-value').textContent = filtered.length
+    ? fmtCompact(filtered.reduce((s, r) => s + r.price, 0))
+    : '—';
 
   const grouped = groupByMonth(filtered);
 
@@ -250,6 +252,12 @@ function render() {
 
   const topBody = document.getElementById('tbl-top');
   topBody.textContent = '';
+  if (!top.length) {
+    const c = topBody.insertRow().insertCell();
+    c.colSpan = 4;
+    c.textContent = '—';
+    return;
+  }
   for (const t of top) {
     const tr = topBody.insertRow();
     tr.insertCell().textContent = t.name;

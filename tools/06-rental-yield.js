@@ -6,6 +6,9 @@ const communities = Object.keys(RENT_INDEX_DATA.index);
 // each strategy keeps its own management default; the input shows the active one
 let mgmtLT = 0, mgmtST = 15;
 
+// latest 5-year projection rows, refreshed by render() for CSV export
+let lastProjection = [];
+
 function indexRent() {
   const community = strVal('community');
   const beds = strVal('beds');
@@ -60,11 +63,15 @@ function render() {
 
   // financing
   const mortgaged = document.getElementById('mortgage').checked;
+  // typed values bypass the input min/max attributes, so clamp before financing math
+  const ltvPct = Math.min(80, Math.max(0, numVal('ltv'))); // CBUAE caps LTV at 80%
+  const ratePct = Math.max(0, numVal('rate'));
+  const termYrs = Math.max(1, numVal('years'));
   let coc = price > 0 ? eco.net / price : NaN;
   let monthlyPayment = 0;
   if (mortgaged) {
-    const loan = price * Math.min(80, numVal('ltv')) / 100; // CBUAE caps LTV at 80%
-    monthlyPayment = annuityMonthly(loan, numVal('rate'), numVal('years'));
+    const loan = price * ltvPct / 100;
+    monthlyPayment = annuityMonthly(loan, ratePct, termYrs);
     const cashInvested = price - loan + price * numVal('acqPct') / 100;
     coc = cashInvested > 0 ? (eco.net - monthlyPayment * 12) / cashInvested : NaN;
   }
@@ -102,11 +109,12 @@ function render() {
   // 5-year projection (unleveraged)
   const g = numVal('rentGrowth') / 100;
   const a = numVal('appr') / 100;
-  const labels = [], nets = [];
+  const labels = [], grosses = [], nets = [];
   let totalNet = 0;
   for (let y = 0; y < 5; y++) {
     const yr = economics(strategy, rent * Math.pow(1 + g, y), sqft);
     labels.push('Y' + (y + 1));
+    grosses.push(yr.gross);
     nets.push(yr.net);
     totalNet += yr.net;
   }
@@ -119,13 +127,14 @@ function render() {
 
   // levered layer: post-debt cash flow, exit equity, 5-yr IRR (financing only)
   const projSets = [{ label: 'Net income / yr', values: nets, color: SERIES_COLORS[2] }];
-  let levIrr = NaN, equityExit = NaN, cf1 = NaN;
+  let levIrr = NaN, equityExit = NaN, cf1 = NaN, debtService = null;
   if (mortgaged) {
-    const loan = price * Math.min(80, numVal('ltv')) / 100;
-    const rateDec = numVal('rate') / 100;
-    const ds = pmt(loan, rateDec, numVal('years')) * 12; // annual debt service
+    const loan = price * ltvPct / 100;
+    const rateDec = ratePct / 100;
+    const ds = pmt(loan, rateDec, termYrs) * 12; // annual debt service
+    debtService = ds;
     const cf = nets.map(n => n - ds);
-    const bal5 = Math.max(0, loanBalance(loan, rateDec, numVal('years'), 60));
+    const bal5 = Math.max(0, loanBalance(loan, rateDec, termYrs, 60));
     equityExit = value5 - bal5;
     cf1 = cf[0];
     const cashInvested = price - loan + price * numVal('acqPct') / 100;
@@ -148,6 +157,14 @@ function render() {
 
   drawBars(document.getElementById('projChart'), labels, projSets,
     { yFmt: v => fmtCompact(v) });
+
+  // keep the latest projection rows for CSV export
+  lastProjection = labels.map((lab, y) => ({
+    year: lab,
+    gross: Math.round(grosses[y]),
+    net: Math.round(nets[y]),
+    cf: debtService !== null ? Math.round(nets[y] - debtService) : null,
+  }));
 
   // RERA check
   const community = strVal('community');
@@ -193,6 +210,29 @@ function render() {
       ? 'Contract rent is at or above the index — no increase permitted.'
       : 'Rent is less than 10% below the index — no increase permitted this renewal.';
   }
+}
+
+function exportCsv() {
+  const esc = s => {
+    s = String(s);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const financed = lastProjection.some(r => r.cf !== null);
+  const lines = [financed
+    ? 'Year,Gross rent (AED),Net income (AED),Post-debt cash flow (AED)'
+    : 'Year,Gross rent (AED),Net income (AED)'];
+  for (const r of lastProjection) {
+    const row = financed ? [r.year, r.gross, r.net, r.cf] : [r.year, r.gross, r.net];
+    lines.push(row.map(esc).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rental-yield-projection.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function init() {
@@ -244,6 +284,8 @@ function init() {
     document.getElementById('mortgageFields').hidden = !document.getElementById('mortgage').checked;
     render();
   });
+
+  document.getElementById('exportCsv').addEventListener('click', exportCsv);
 
   render();
 }

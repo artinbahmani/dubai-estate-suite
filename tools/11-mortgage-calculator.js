@@ -24,11 +24,15 @@ function render() {
   const buyerType = strVal('buyerType');
   const propStatus = strVal('propStatus');
   const firstProp = strVal('firstProp');
-  const income = numVal('salary') + numVal('otherIncome');
-  const debts = numVal('debts');
-  const price = numVal('price');
-  const rateDec = numVal('rate') / 100;
-  const years = numVal('years');
+  // the min/max attributes don't stop typing — clamp before any math
+  const income = Math.max(0, numVal('salary')) + Math.max(0, numVal('otherIncome'));
+  const debts = Math.max(0, numVal('debts'));
+  const price = Math.max(0, numVal('price'));
+  const rateDec = Math.max(0, numVal('rate')) / 100;
+  const years = Math.max(1, Math.round(numVal('years')));
+  const feeArrPct = Math.max(0, numVal('feeArrPct'));
+  const feeVal = Math.max(0, numVal('feeValuation'));
+  const feeInsPct = Math.max(0, numVal('feeIns'));
   const n = years * 12;
 
   document.getElementById('offplanNote').hidden = propStatus !== 'offplan';
@@ -53,6 +57,7 @@ function render() {
   if (noCapacity) {
     $('sMaxLoan').textContent = '—';
     $('sPayment').textContent = '—';
+    $('sIns').textContent = '—';
     $('sDown').textContent = price > 0 ? fmtAED(price) + ' · 100%' : '—';
     $('sBinding').textContent = 'None';
     $('sBinding').className = 'v neg';
@@ -62,9 +67,9 @@ function render() {
     $('sBal5').textContent = '—';
     $('cDown').textContent = price > 0 ? fmtAED(price) : '—';
     $('cArr').textContent = '—';
-    $('cVal').textContent = fmtAED(numVal('feeValuation'));
+    $('cVal').textContent = fmtAED(feeVal);
     $('cReg').textContent = '—';
-    $('cTotal').textContent = price > 0 ? fmtAED(price + numVal('feeValuation')) : '—';
+    $('cTotal').textContent = price > 0 ? fmtAED(price + feeVal) : '—';
     drawLine($('chart'), [{ label: 'Loan balance', points: [[0, 0], [Math.max(1, years), 0]], color: SERIES_COLORS[0] }],
       { yFmt: v => fmtCompact(v) });
     $('amortBody').innerHTML = '';
@@ -73,6 +78,8 @@ function render() {
 
   $('sMaxLoan').textContent = fmtAED(maxLoan);
   $('sPayment').textContent = fmtAED(payment);
+  // indicative monthly mortgage-protection premium; year-1 balance ≈ initial loan
+  $('sIns').textContent = maxLoan > 0 ? fmtAED(maxLoan * feeInsPct / 1200) : '—';
   $('sDown').textContent = price > 0 ? fmtAED(down) + ' · ' + fmtPct(down / price, 0) : fmtAED(down);
   const bindingEl = $('sBinding');
   if (binding === 'ltv') {
@@ -84,18 +91,25 @@ function render() {
   }
   $('sDbr').textContent = income > 0 ? fmtPct((payment + debts) / income, 0) : '—';
 
-  // reverse affordability: largest price where the DBR loan still fits the cap
-  $('sAfford').textContent = cap > 0 ? fmtAED(loanDbr / cap) : '—';
+  // reverse affordability: largest price where the DBR loan still fits the cap.
+  // The cap tier changes at AED 5M, so it must be evaluated at the affordable
+  // price, not at the price entered above.
+  let afford = cap > 0 ? loanDbr / cap : NaN;
+  if (cap > 0 && propStatus === 'ready' && firstProp === 'first' && buyerType !== 'nonresident') {
+    const capLo = buyerType === 'national' ? 0.85 : 0.80; // price ≤ AED 5M
+    const capHi = buyerType === 'national' ? 0.75 : 0.70; // price above AED 5M
+    afford = loanDbr <= capLo * 5e6 ? loanDbr / capLo : loanDbr / capHi;
+  }
+  $('sAfford').textContent = isFinite(afford) ? fmtAED(afford) : '—';
 
   // upfront costs
-  const arr = maxLoan * numVal('feeArrPct') / 100;
-  const val = numVal('feeValuation');
-  const reg = maxLoan * 0.0025 + 290;
+  const arr = maxLoan * feeArrPct / 100;
+  const reg = maxLoan > 0 ? maxLoan * 0.0025 + 290 : 0;
   $('cDown').textContent = fmtAED(down);
   $('cArr').textContent = fmtAED(arr);
-  $('cVal').textContent = fmtAED(val);
+  $('cVal').textContent = fmtAED(feeVal);
   $('cReg').textContent = fmtAED(reg);
-  $('cTotal').textContent = fmtAED(down + arr + val + reg);
+  $('cTotal').textContent = fmtAED(down + arr + feeVal + reg);
 
   // amortization
   const totalInterest = payment * n - maxLoan;
@@ -138,7 +152,7 @@ function init() {
   for (const id of ['buyerType', 'propStatus', 'firstProp']) {
     document.getElementById(id).addEventListener('change', render);
   }
-  for (const id of ['salary', 'otherIncome', 'debts', 'price', 'rate', 'years', 'feeArrPct', 'feeValuation']) {
+  for (const id of ['salary', 'otherIncome', 'debts', 'price', 'rate', 'years', 'feeArrPct', 'feeValuation', 'feeIns']) {
     document.getElementById(id).addEventListener('input', render);
   }
   render();

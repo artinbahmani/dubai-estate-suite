@@ -7,6 +7,12 @@ let active = 'offplan';
 
 const $ = id => document.getElementById(id);
 
+// finite, non-negative number: typed inputs can be negative or overflow to
+// Infinity (e.g. 1e999), which would poison the charts and totals
+function posNum(n) {
+  return isFinite(n) && n > 0 ? n : 0;
+}
+
 function watch(id) {
   const el = $(id);
   el.addEventListener('input', render);
@@ -32,7 +38,7 @@ function rentalGross(annualRent) {
 }
 
 function dealsPerQuarter() {
-  return numVal({ offplan: 'op-deals', resale: 'rs-deals', rental: 'rn-deals' }[active]);
+  return posNum(numVal({ offplan: 'op-deals', resale: 'rs-deals', rental: 'rn-deals' }[active]));
 }
 
 // ---- off-plan tranches ----
@@ -50,7 +56,7 @@ function trancheMonth(msPct) {
 // ---- goal mode ----
 
 function renderGoal(agentPerDeal, dpq) {
-  const target = numVal('goal-target');
+  const target = posNum(numVal('goal-target'));
   const segName = { offplan: 'off-plan', resale: 'resale', rental: 'rental' }[active];
   $('goal-seg').textContent = '(' + segName + ')';
 
@@ -147,7 +153,7 @@ function render() {
   $('op-comm-val').textContent = numVal('op-comm').toFixed(1) + '%';
   $('rs-dual-note').hidden = !$('rs-dual').checked;
 
-  const gross = Math.max(0, grossCommission());
+  const gross = posNum(grossCommission());
   const vat = gross * VAT_RATE;
   const net = gross + vat;
   // off-plan rebate: % of commission (clamped 0-100), paid out of the agent's share
@@ -233,7 +239,7 @@ $('pl-add').addEventListener('click', () => {
   const seg = strVal('pl-seg');
   const pctRaw = $('pl-pct').value.trim();
   // an explicitly typed 0% is kept; only an empty field falls back to the segment default
-  pipeline.push({ seg, value: numVal('pl-value'), pct: pctRaw === '' ? PL_DEFAULTS[seg] : numVal('pl-pct') });
+  pipeline.push({ seg, value: posNum(numVal('pl-value')), pct: pctRaw === '' ? PL_DEFAULTS[seg] : posNum(numVal('pl-pct')) });
   render();
 });
 $('pl-body').addEventListener('click', (e) => {

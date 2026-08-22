@@ -11,6 +11,9 @@ function entriesFor(community) {
 
 // ---- reference table ----
 
+// rows currently shown in the table (after search + sort), used by the CSV export
+let shownRows = [];
+
 function renderTable() {
   const q = strVal('search').trim().toLowerCase();
   const sort = strVal('sort');
@@ -18,6 +21,7 @@ function renderTable() {
   if (sort === 'typAsc') rows = [...rows].sort((a, b) => a.typical - b.typical);
   else if (sort === 'typDesc') rows = [...rows].sort((a, b) => b.typical - a.typical);
   else rows = [...rows].sort((a, b) => a.community.localeCompare(b.community) || a.segment.localeCompare(b.segment));
+  shownRows = rows;
 
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
@@ -35,6 +39,22 @@ function renderTable() {
   document.getElementById('listNote').textContent = rows.length
     ? rows.length + ' of ' + entries.length + ' entries shown · AED per sqft per year. ' + SERVICE_CHARGES.note + '.'
     : 'No communities match your search.';
+}
+
+function csvCell(x) {
+  const s = String(x);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportCsv() {
+  const rows = [['Community', 'Segment', 'Low (AED/sqft/yr)', 'Typical (AED/sqft/yr)', 'High (AED/sqft/yr)', 'Notes']];
+  for (const e of shownRows) rows.push([e.community, e.segment, e.low, e.typical, e.high, e.notes]);
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'service-charge-index.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ---- cost estimator ----
@@ -93,8 +113,11 @@ function renderCompare() {
     const e = entries[Number(v)];
     if (e && !picks.includes(e)) picks.push(e);
   }
+  // several communities appear with multiple segments — disambiguate identical bar labels
+  const counts = {};
+  for (const e of picks) counts[e.community] = (counts[e.community] || 0) + 1;
   drawBars(document.getElementById('cmpChart'),
-    picks.map(e => e.community),
+    picks.map(e => counts[e.community] > 1 ? e.community + ' (' + e.segment + ')' : e.community),
     [{ label: 'Typical AED/sqft/yr', values: picks.map(e => e.typical), color: SERIES_COLORS[0] }],
     { yFmt: v => 'AED ' + fmtNum(v, 0) });
 }
@@ -118,6 +141,7 @@ function init() {
 
   document.getElementById('search').addEventListener('input', renderTable);
   document.getElementById('sort').addEventListener('change', renderTable);
+  document.getElementById('exportCsv').addEventListener('click', exportCsv);
   est.addEventListener('change', () => { fillSegments(); renderEstimate(); });
   document.getElementById('estSegment').addEventListener('change', renderEstimate);
   document.getElementById('estSqft').addEventListener('input', renderEstimate);

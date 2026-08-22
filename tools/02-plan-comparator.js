@@ -22,7 +22,7 @@ function loadCustom() {
   const out = {};
   for (let i = 1; i <= N; i++) {
     const rows = (Array.isArray(raw[i]) ? raw[i] : [])
-      .map(r => ({ month: Math.max(0, Math.round(+r.month) || 0), pct: Math.max(0, +r.pct) || 0 }))
+      .map(r => ({ month: Math.min(600, Math.max(0, Math.round(+r.month) || 0)), pct: Math.max(0, +r.pct) || 0 }))
       .filter(r => r.pct > 0);
     out[i] = rows.length ? rows : defaultCustom();
   }
@@ -50,7 +50,7 @@ function buildEditor(i) {
       '<input type="number" min="0" step="0.5" value="' + row.pct + '" title="% of price" style="width:80px">' +
       '<button type="button" class="btn ghost small">Remove</button>';
     const inputs = div.querySelectorAll('input');
-    inputs[0].addEventListener('input', () => { row.month = Math.max(0, Math.round(numVal(inputs[0]))); saveCustom(); render(); });
+    inputs[0].addEventListener('input', () => { row.month = Math.min(600, Math.max(0, Math.round(numVal(inputs[0])))); saveCustom(); render(); });
     inputs[1].addEventListener('input', () => { row.pct = Math.max(0, numVal(inputs[1])); saveCustom(); render(); });
     div.querySelector('button').addEventListener('click', () => {
       customStore[i].splice(idx, 1);
@@ -81,8 +81,9 @@ function readProject(i) {
     name: strVal('p' + i + 'Name').trim() || 'Project ' + i,
     price: Math.max(0, numVal('p' + i + 'Price')),
     plan: PLANS[planKey],
-    constrMonths: Math.max(1, numVal('p' + i + 'Constr')),
-    appr: Math.max(0, numVal('p' + i + 'Appr')) / 100,
+    constrMonths: Math.max(1, Math.min(600, numVal('p' + i + 'Constr'))),
+    // appreciation may be negative (downside flip scenarios); floor at -100% so the sale price stays >= 0
+    appr: Math.max(-100, numVal('p' + i + 'Appr')) / 100,
   };
   if (planKey === 'custom') {
     p.custom = customStore[i].slice().sort((a, b) => a.month - b.month);
@@ -106,7 +107,8 @@ function buildSchedule(p, t0) {
   const nQ = Math.max(1, Math.floor(p.constrMonths / 3));
   if (constrRest > 0) {
     for (let k = 1; k <= nQ; k++) {
-      flows.push({ date: addMonths(t0, 3 * k), amount: constrRest / nQ });
+      // clamp to handover: with a 1-2 month build, quarter 1 must not land after handover
+      flows.push({ date: addMonths(t0, Math.min(3 * k, p.constrMonths)), amount: constrRest / nQ });
     }
   }
   if (p.plan.handover > 0) flows.push({ date: handoverDate, amount: p.price * p.plan.handover });

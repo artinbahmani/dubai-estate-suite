@@ -93,6 +93,10 @@
         <label for="feeValuation">Valuation fee (AED)</label>
         <input type="number" id="feeValuation" value="3000" min="0" step="250">
       </div>
+      <div class="field">
+        <label for="feeIns">Life insurance (% / yr of loan balance)</label>
+        <input type="number" id="feeIns" value="0.45" min="0" max="2" step="0.05">
+      </div>
       <p class="note">Mortgage registration is 0.25% of the loan amount plus AED 290, payable to the Dubai Land Department. Lenders also require life insurance (mortgage protection), typically ~0.4–0.5% per year of the outstanding balance — often quoted as a monthly premium on top of the payment.</p>
     </section>
   </div>
@@ -102,6 +106,7 @@
     <div class="stats">
       <div class="stat"><div class="k">Maximum loan</div><div class="v" id="sMaxLoan">—</div></div>
       <div class="stat"><div class="k">Monthly payment</div><div class="v" id="sPayment">—</div></div>
+      <div class="stat"><div class="k">Life insurance / mo (est.)</div><div class="v" id="sIns">—</div></div>
       <div class="stat"><div class="k">Down payment</div><div class="v" id="sDown">—</div></div>
       <div class="stat"><div class="k">LTV cap applied</div><div class="v" id="sLtvCap">—</div></div>
       <div class="stat"><div class="k">Binding constraint</div><div class="v" id="sBinding">—</div></div>

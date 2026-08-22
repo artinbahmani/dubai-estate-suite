@@ -8,8 +8,9 @@ let lastRows = []; // milestone rows from the latest render, used by CSV export
 let hvDirty = false; // true once the user edits the expected handover value manually
 
 function shortDate(dateStr) {
-  const d = new Date(dateStr);
-  return MONTHS[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+  // string-slice rather than new Date(): 'YYYY-MM-DD' parses as UTC, which can
+  // shift the month by one in timezones behind UTC
+  return MONTHS[Number(dateStr.slice(5, 7)) - 1] + ' ' + dateStr.slice(2, 4);
 }
 
 function constructionShare() {
@@ -72,6 +73,9 @@ function irrAtValue(rows, constrMonths, price, paidByHandover, saleValue) {
   const today = rows.length ? rows[0].date : new Date().toISOString().slice(0, 10);
   const flows = rows.filter(r => r.month <= constrMonths).map(r => ({ date: r.date, amount: -r.amount }));
   flows.push({ date: addMonths(today, constrMonths), amount: saleValue - (price - paidByHandover) });
+  // xirr has no meaningful solution without at least one inflow and one outflow;
+  // on all-zero flows its bisection would otherwise return a finite garbage rate
+  if (!flows.some(f => f.amount < 0) || !flows.some(f => f.amount > 0)) return NaN;
   return xirr(flows);
 }
 

@@ -189,6 +189,8 @@ function render() {
     });
   } else {
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    canvas._hits = [];     // drop stale hover targets from the previous draw
+    canvas._redraw = null; // stop auto-resize from redrawing the old chart
   }
   document.getElementById('scatterNote').textContent =
     (trendOn

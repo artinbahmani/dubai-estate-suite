@@ -242,11 +242,19 @@ function drawLine(canvas, series, opts = {}) {
       const py = pad.top + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
       i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
       // xLabels are indexed by the x value itself (month index), not the point's position in the series
-      const xTxt = opts.xLabels && opts.xLabels[x] !== undefined ? String(opts.xLabels[x]) : fmtNum(x);
+      const xTxt = opts.xLabels && opts.xLabels[x] !== undefined ? String(opts.xLabels[x]) : (Number.isInteger(x) && x >= 1900 && x <= 2100 ? String(x) : fmtNum(x));
       const yTxt = opts.yFmt ? opts.yFmt(y) : fmtNum(y);
       hits.push({ px, py, text: (s.label ? s.label + ' · ' : '') + xTxt + ': ' + yTxt });
     });
     ctx.stroke();
+    // a single point draws no segment — mark it with a dot so it stays visible
+    if (xCount === 1) {
+      const [sx, sy] = s.points[0];
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pad.left + ((sx - xMin) / xSpan) * plotW, pad.top + plotH - ((sy - yMin) / (yMax - yMin)) * plotH, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (s.label) {
       ctx.fillStyle = color;
       ctx.textAlign = 'left';

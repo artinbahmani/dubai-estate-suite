@@ -79,12 +79,14 @@ function render() {
   const fmt = n => usd ? 'USD ' + fmtNum(n / AED_PER_USD) : fmtAED(n);
 
   document.getElementById('ltvVal').textContent = fmtPct(numVal('ltv') / 100, 0);
-  document.getElementById('agencyVal').textContent = fmtPct(numVal('agencyPct') / 100, 2).replace(/\.0+%$/, '%');
+  document.getElementById('agencyVal').textContent = fmtPct(numVal('agencyPct') / 100, 2).replace(/\.?0+%$/, '%');
   document.getElementById('dldSplitVal').textContent = fmtPct(numVal('dldSplit') / 100, 0);
   document.getElementById('ltvField').style.display = r.isMortgage ? '' : 'none';
   document.getElementById('loanStat').style.display = r.isMortgage ? '' : 'none';
   document.getElementById('nocField').style.display = r.isOffplan ? 'none' : '';
   document.getElementById('waiverField').style.display = r.isOffplan ? '' : 'none';
+  // the buyer/seller DLD split only applies to secondary transfers; off-plan uses the developer waiver instead
+  document.getElementById('dldSplitField').style.display = r.isOffplan ? 'none' : '';
   document.getElementById('offplanNote').style.display = (r.isOffplan && r.isMortgage) ? '' : 'none';
 
   document.getElementById('sFees').textContent = fmt(r.totalFees);
@@ -109,7 +111,7 @@ function render() {
 
   document.getElementById('donutTitle').textContent = 'Cost mix (' + (usd ? 'USD' : 'AED') + ')';
   drawDonut(document.getElementById('donut'),
-    r.items.map((it, i) => ({
+    r.items.filter(it => it.amount > 0).map((it, i) => ({
       label: it.label.replace(/ \(.*/, ''),
       value: conv(it.amount),
       color: SERIES_COLORS[i % SERIES_COLORS.length]

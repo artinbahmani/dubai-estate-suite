@@ -97,7 +97,8 @@ function addRow(saved, doRender = true) {
   const r = buildRow();
   if (saved) {
     r.els.name.value = saved.name || '';
-    r.els.status.value = saved.status in STATUS ? saved.status : 'owned';
+    // hasOwnProperty, not `in`: 'constructor' in STATUS is true via the prototype chain
+    r.els.status.value = Object.prototype.hasOwnProperty.call(STATUS, saved.status) ? saved.status : 'owned';
     r.els.price.value = saved.price ?? '';
     r.els.paid.value = saved.paid ?? '';
     r.els.share.value = saved.share ?? 100;
@@ -143,19 +144,26 @@ function loadState() {
 
 // ---- eligibility logic ----
 
+// numeric input value clamped to a finite, non-negative number —
+// numVal maps NaN to 0 but passes Infinity through (e.g. "1e309")
+function nonNeg(el) {
+  const v = numVal(el);
+  return isFinite(v) ? Math.max(0, v) : 0;
+}
+
 // returns { counted, label, badges: [{ text, cls }] }
 function assess(r) {
-  const price = Math.max(0, numVal(r.els.price));
-  const rawPaid = Math.max(0, numVal(r.els.paid));
-  const share = Math.min(100, Math.max(0, numVal(r.els.share)));
+  const price = nonNeg(r.els.price);
+  const rawPaid = nonNeg(r.els.paid);
+  const share = Math.min(100, nonNeg(r.els.share));
   const status = r.els.status.value;
   const label = STATUS[status];
 
   // paid is clamped to price for all math; warn when the entered amount exceeds it
   const paidExceeded = rawPaid > price && rawPaid > 0;
 
-  if (status === 'offplan' && price <= 0) {
-    // special case: no price -> nothing to count, don't report '0% paid'
+  if (price <= 0) {
+    // no price -> nothing to count, regardless of status
     const badges = [{ text: 'counts for AED 0 — no price entered', cls: 'warn' }];
     if (paidExceeded) badges.push({ text: 'amount paid exceeds price — capped at price', cls: 'warn' });
     return { counted: 0, label, badges };
@@ -258,7 +266,8 @@ function renderCost() {
     tr.firstElementChild.textContent = f.item;
     body.appendChild(tr);
   }
-  const n = Math.max(1, Math.round(numVal('applicants')));
+  const nRaw = Math.round(numVal('applicants'));
+  const n = isFinite(nRaw) ? Math.max(1, nRaw) : 1;
   document.getElementById('feePerPerson').textContent = fmtAED(perPerson);
   document.getElementById('feeAllLabel').textContent = 'Total, ' + fmtNum(n) + (n === 1 ? ' applicant' : ' applicants');
   document.getElementById('feeAll').textContent = fmtAED(perPerson * n);
